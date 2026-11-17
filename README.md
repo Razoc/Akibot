@@ -11,9 +11,20 @@ travaillant sur la couche de traduction (CPU et GPU), jamais sur le jeu lui-mêm
 
 ## État actuel
 
-Version **0.2.0** : lanceur Akibot refait (fenêtre 1280×720 épurée, installation en un exe, français/anglais, mises à jour auto). Le moteur
-est pour l'instant **identique à AstroHybrid 1.2.1**. Les optimisations Akibot arriveront ici au fur
-et à mesure, avec des mesures avant/après.
+Version **0.2.0** : nouveau lanceur Akibot.
+
+- Fenêtre **1280×720** épurée : tout tient sans défilement, sans infos techniques inutiles.
+- Bouton **Jouer** toujours visible, réglages en deux colonnes, explications dans les bulles d'aide (ⓘ).
+- Installation en un seul exe, français/anglais, mises à jour automatiques.
+
+Le moteur est pour l'instant **identique à AstroHybrid 1.2.1**. `kyty_gpu.dll` se recompile maintenant depuis
+les sources avec les mêmes performances que la release (voir [Compiler](#compiler-kyty_gpudll)) : les
+optimisations Akibot arriveront ici au fur et à mesure, avec des mesures avant/après.
+
+<p align="center">
+  <img src="docs/screenshots/akibot-accueil.png" width="49%" alt="Lanceur Akibot : accueil"/>
+  <img src="docs/screenshots/akibot-graphismes.png" width="49%" alt="Lanceur Akibot : graphismes"/>
+</p>
 
 ### Testé sur
 
@@ -55,6 +66,10 @@ d'images, sans limite de FPS, éclairage d'origine. FPS relevé chaque seconde p
 Ryzen 5 5500 + RTX 5060). Le correctif 0.1.1 ne coûte pas de FPS. Le jeu reste limité par le CPU (préparation des
 draws sur un seul thread, plafond ~70 FPS) : c'est la cible des optimisations à venir.
 
+`kyty_gpu.dll` recompilée par Akibot contre celle de la release, mesurées l'une après l'autre dans la même
+séance : **58,5 contre 58,3 FPS** de moyenne (1 % bas 56 contre 55). Performances identiques ; l'écart avec les
+~62 FPS ci-dessus vient de l'état du PC ce jour-là. Toujours comparer deux versions dans la même séance.
+
 Pour refaire la mesure sur ton PC : `powershell -ExecutionPolicy Bypass -File Tools\akibot\bench_level.ps1 -InstallDir C:\Akibot`
 (le jeu s'ouvre et se ferme tout seul ; résultat dans la console et un CSV à côté du script).
 
@@ -66,7 +81,7 @@ Pour refaire la mesure sur ton PC : `powershell -ExecutionPolicy Bypass -File To
    3 Go libres). Akibot télécharge le runtime (190 Mo) et vérifie son empreinte SHA-256.
 3. Indique le dossier de ton dump (celui qui contient `eboot.bin`, `sce_module` et `sce_sys`). La conversion
    prend environ une minute ; ton dump n'est jamais modifié.
-4. Règle les graphismes et la manette si tu veux, puis appuie sur **Jouer**.
+4. Règle les graphismes et la manette si tu veux, puis appuie sur **Jouer** (en bas à gauche).
 
 Akibot vérifie les nouvelles versions à chaque démarrage et se met à jour tout seul. Windows SmartScreen peut
 avertir au premier lancement (exe non signé) : « Informations complémentaires » puis « Exécuter quand même ».
@@ -77,10 +92,34 @@ dossier d'installation.
 > English: download **Akibot.exe** from the latest release, run it, pick a language and an install folder,
 > then point it at your own Astro Bot dump. Akibot updates itself.
 
+## Compiler `kyty_gpu.dll`
+
+Prérequis : Visual Studio 2022 Build Tools (C++ x64) + SDK Windows, **LLVM 22.1.3** (clang-cl ; les versions
+plus récentes ne lisent pas le profil PGO), SDK Vulkan 1.4.363.0, CMake, Ninja, Python 3, Git.
+
+```
+git clone https://github.com/Jetsku/KytyPS5.git kyty
+cd kyty
+git config core.autocrlf false
+git checkout u59-windows-20261024-int21
+git submodule update --init --recursive
+git am --keep-cr ..\Akibot\Source\kyty-hybrid\*.patch
+..\Akibot\Tools\hybrid\build-kyty-pgo.cmd
+```
+
+- Place `kyty` à côté du dépôt Akibot (le script cherche `..\kyty`) ou indique `KYTY_SRC`. Résultat :
+  `..\kyty-gpu\kyty_gpu.dll`, en environ 3 min sur un 9800X3D.
+- `core.autocrlf false` est obligatoire : sinon les patchs ne s'appliquent pas. Si ton clone d'Akibot a été fait
+  avec `autocrlf true`, applique les patchs tirés de Git (`git show HEAD:Source/kyty-hybrid/<patch>`).
+- Sans `KYTY_STREAMLINE_DIR` (SDK Streamline 2.14.16), la DLL est construite sans DLSS ni génération d'images.
+- Pour tester : garde une copie de `Build\RunHybrid\kyty_gpu.dll`, remplace-la, mesure avec `bench_level.ps1`.
+
 ## Feuille de route
 
 - [x] Mesurer une base de FPS fiable dans Sky Garden (~62 FPS en 1440p natif, voir plus haut). Autres niveaux à faire.
-- [ ] Compiler AnyPS5 et `kyty_gpu.dll` depuis les sources et retrouver les perfs de la release.
+- [x] Lanceur refait : fenêtre 1280×720 épurée (0.2.0).
+- [x] Compiler `kyty_gpu.dll` depuis les sources et retrouver les perfs de la release.
+- [ ] Compiler `kyty_gpu.dll` avec Streamline (DLSS et génération d'images) et AnyPS5 depuis les sources.
 - [ ] Profiler le « draw commit » du command processor (~22 ms par image sur un seul thread CPU, ~4 900 draws
       par image) et chercher des gains.
 - [ ] Porter l'éclairage rapide et le soft-assert sur la v01.007.000.
