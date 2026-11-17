@@ -40,6 +40,24 @@ et à mesure, avec des mesures avant/après.
 | Soft-assert du command buffer | ❌ idem |
 | Patch physique des tissus | ❌ idem |
 
+### Mesures de référence (Sky Garden)
+
+Lancement direct dans le niveau (`-lvl underwater_aerial_garden`), 2560×1440 natif, sans DLSS ni génération
+d'images, sans limite de FPS, éclairage d'origine. FPS relevé chaque seconde pendant 120 s après 25 s de chauffe.
+
+| Essai | Moyenne | Médiane | Pire seconde | Secondes sous 50 FPS |
+|---|---|---|---|---|
+| Akibot 0.1.1 (correctif actif), cache froid | 63,6 | 65 | 15 | 2 |
+| Sans le correctif (`APS5_NO_WRITE_WATCH=0`) | 61,5 | 64 | 0 | 7 |
+| Akibot 0.1.1 (correctif actif), cache chaud | 61,9 | 63 | 42 | 3 |
+
+**~62 FPS de moyenne** sur Ryzen 7 9800X3D + RTX 5070 (l'amont mesure 32-34 FPS au même endroit avec un
+Ryzen 5 5500 + RTX 5060). Le correctif 0.1.1 ne coûte pas de FPS. Le jeu reste limité par le CPU (préparation des
+draws sur un seul thread, plafond ~70 FPS) : c'est la cible des optimisations à venir.
+
+Pour refaire la mesure sur ton PC : `powershell -ExecutionPolicy Bypass -File Tools\akibot\bench_level.ps1 -InstallDir C:\Akibot`
+(le jeu s'ouvre et se ferme tout seul ; résultat dans la console et un CSV à côté du script).
+
 ## Jouer
 
 1. Télécharge **Akibot.exe** depuis la [dernière release](https://github.com/Razoc/Akibot/releases/latest)
@@ -61,7 +79,7 @@ dossier d'installation.
 
 ## Feuille de route
 
-- [ ] Mesurer une base de FPS fiable (Sky Garden et d'autres niveaux) sur le PC de test.
+- [x] Mesurer une base de FPS fiable dans Sky Garden (~62 FPS en 1440p natif, voir plus haut). Autres niveaux à faire.
 - [ ] Compiler AnyPS5 et `kyty_gpu.dll` depuis les sources et retrouver les perfs de la release.
 - [ ] Profiler le « draw commit » du command processor (~22 ms par image sur un seul thread CPU, ~4 900 draws
       par image) et chercher des gains.
