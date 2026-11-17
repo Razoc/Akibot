@@ -11,7 +11,8 @@ travaillant sur la couche de traduction (CPU et GPU), jamais sur le jeu lui-mêm
 
 ## État actuel
 
-Le code est pour l'instant **identique à AstroHybrid 1.2.1**. Les optimisations Akibot arriveront ici au fur
+Version **0.1.0** : nouveau lanceur Akibot (installation en un exe, français/anglais, mises à jour auto). Le moteur
+est pour l'instant **identique à AstroHybrid 1.2.1**. Les optimisations Akibot arriveront ici au fur
 et à mesure, avec des mesures avant/après.
 
 ### Testé sur
@@ -39,15 +40,22 @@ et à mesure, avec des mesures avant/après.
 
 ## Jouer
 
-En attendant une release Akibot, utilise la release officielle d'AstroHybrid :
+1. Télécharge **Akibot.exe** depuis la [dernière release](https://github.com/Razoc/Akibot/releases/latest)
+   (un seul fichier, environ 1,4 Mo).
+2. Lance-le. Choisis la langue et le dossier d'installation (par exemple `C:\Akibot`, hors OneDrive, environ
+   3 Go libres). Akibot télécharge le runtime (190 Mo) et vérifie son empreinte SHA-256.
+3. Indique le dossier de ton dump (celui qui contient `eboot.bin`, `sce_module` et `sce_sys`). La conversion
+   prend environ une minute ; ton dump n'est jamais modifié.
+4. Règle les graphismes et la manette si tu veux, puis appuie sur **Jouer**.
 
-1. Télécharge le zip **AstroBotPC-AstroHybrid** de la
-   [dernière release](https://github.com/imnotsharingmyname/pcportastrobot/releases/latest) et extrais-le.
-2. Lance **AstroHybrid.exe** et indique le dossier de ton dump (celui qui contient `eboot.bin`,
-   `sce_module` et `sce_sys`). La conversion prend environ deux minutes.
-3. Appuie sur **Play**.
+Akibot vérifie les nouvelles versions à chaque démarrage et se met à jour tout seul. Windows SmartScreen peut
+avertir au premier lancement (exe non signé) : « Informations complémentaires » puis « Exécuter quand même ».
 
-Sans fenêtre : `AstroHybrid.exe --setup "<dossier du dump>"`.
+Sans fenêtre : `Akibot.exe --install "<dossier>"`, puis `Akibot.exe --setup "<dossier du dump>"` depuis le
+dossier d'installation.
+
+> English: download **Akibot.exe** from the latest release, run it, pick a language and an install folder,
+> then point it at your own Astro Bot dump. Akibot updates itself.
 
 ## Feuille de route
 
