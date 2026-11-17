@@ -1,4 +1,5 @@
 using System;
+using AstroHybrid.App.Services;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -43,7 +44,7 @@ namespace AstroHybrid.App.ViewModels
         {
             get
             {
-                var labels = new List<string> { "Automatic - best graphics card" };
+                var labels = new List<string> { Loc.T("Automatic - best graphics card") };
                 foreach (var gpu in _mainViewModel.HardwareInfo?.Gpus ?? new List<GpuAdapter>())
                     labels.Add(gpu.Label);
                 return labels.ToArray();
@@ -89,21 +90,21 @@ namespace AstroHybrid.App.ViewModels
             {
                 var hardware = _mainViewModel.HardwareInfo;
                 if (hardware == null || hardware.Gpus.Count == 0)
-                    return "No graphics card detected.";
+                    return Loc.T("No graphics card detected.");
 
                 var detected = string.Join(", ", hardware.Gpus.Select(g =>
                     $"{g.Name} ({(g.IsDiscrete ? "discrete" : g.IsIntegrated ? "integrated" : "graphics")})"));
-                var text = "Detected: " + detected + ".";
+                var text = Loc.T("Detected: ") + detected + ".";
 
                 if (hardware.SelectedGpuIndex < 0)
-                    text += " Automatic uses the discrete card: the renderer prefers one over integrated graphics.";
+                    text += Loc.T(" Automatic uses the discrete card: the renderer prefers one over integrated graphics.");
                 else
-                    text += " The choice is passed to the game as ANYPS5_GPU; the renderer also prefers a discrete card by itself.";
+                    text += Loc.T(" The choice is passed to the game as ANYPS5_GPU; the renderer also prefers a discrete card by itself.");
 
                 if (hardware.SelectedGpu?.RtxSeries >= 20)
-                    text += " DLSS, Reflex and frame generation use this card.";
+                    text += Loc.T(" DLSS, Reflex and frame generation use this card.");
                 else if (hardware.Gpus.Any(g => g.RtxSeries >= 20))
-                    text += " The NVIDIA options need the RTX card: pick it, or Automatic, to use them.";
+                    text += Loc.T(" The NVIDIA options need the RTX card: pick it, or Automatic, to use them.");
                 return text;
             }
         }
@@ -150,7 +151,7 @@ namespace AstroHybrid.App.ViewModels
         public string UltrawideNote => "Uses the 21:9 game patch and 21:9 window dimensions (2560x1080 / 3440x1440) when enabled; 16:9 remains unchanged.";
 
         // Ray Tracing / Lighting mode (0 = OFF / Non-RT, 1 = ON / Ray Tracing)
-        public string[] RayTracingLabels => new[] { "OFF - Faster lighting (Non-RT, recommended)", "ON - Ray Tracing (Original lighting)" };
+        public string[] RayTracingLabels => new[] { Loc.T("OFF - Faster lighting (Non-RT, recommended)"), Loc.T("ON - Ray Tracing (Original lighting)") };
 
         public int RayTracingIndex
         {
@@ -168,14 +169,14 @@ namespace AstroHybrid.App.ViewModels
         }
 
         public string RayTracingNote => _mainViewModel.Settings.Lighting == 1
-            ? "Ray Tracing ON: runs AstroBot.exe with full GI probes and ray-traced lighting shaders (higher GPU load)."
-            : "Ray Tracing OFF: runs AstroBot-NonRT-SoftAssert.exe for faster performance and steadier frame times.";
+            ? Loc.T("Ray Tracing ON: runs AstroBot.exe with full GI probes and ray-traced lighting shaders (higher GPU load).")
+            : Loc.T("Ray Tracing OFF: runs AstroBot-NonRT-SoftAssert.exe for faster performance and steadier frame times.");
 
         // NVIDIA frame generation presents the frames itself, and its VSync works only on D3D12 (Streamline
         // DLSS-G guide, 22.5); this port draws with Vulkan, so VSync applies only with frame generation off.
         public bool IsVSyncAvailable => _mainViewModel.Settings.FrameGenMode == 0;
         public string VSyncNote => IsVSyncAvailable
-            ? "Locks presentation to your screen's refresh (no tearing)."
+            ? Loc.T("Locks presentation to your screen's refresh (no tearing).")
             : "Not available with frame generation: NVIDIA frame generation can't use VSync with Vulkan. For no tearing, use a G-Sync / FreeSync screen (with G-Sync on, keep the on-screen target below its refresh rate), or turn frame generation off and tick VSync.";
 
         // VSync
@@ -196,11 +197,11 @@ namespace AstroHybrid.App.ViewModels
         // With frame generation on, the target sets the game's own limit (as in the classic launcher).
         public bool IsFpsLimitEnabled => _mainViewModel.Settings.FrameGenMode == 0;
         public string FpsLimitNote => IsFpsLimitEnabled
-            ? "The game may run below the selected limit in demanding scenes."
+            ? Loc.T("The game may run below the selected limit in demanding scenes.")
             : "Frame generation is on: the game's own limit comes from the frame generation target below (60 on screen = game at 30 x2). Turn frame generation off to use this limit.";
 
         // FPS Limiter
-        public string[] FpsLabels => new[] { "30 FPS - steady (recommended)", "35 FPS", "45 FPS", "50 FPS", "55 FPS", "60 FPS", "No limit" };
+        public string[] FpsLabels => new[] { Loc.T("30 FPS - steady (recommended)"), "35 FPS", "45 FPS", "50 FPS", "55 FPS", "60 FPS", Loc.T("No limit") };
 
         public int FpsIndex
         {
@@ -217,7 +218,7 @@ namespace AstroHybrid.App.ViewModels
         }
 
         // Upscaling
-        public string[] UpscaleLabels => new[] { "Game's own (default)", "NVIDIA DLSS - sharper image" };
+        public string[] UpscaleLabels => new[] { Loc.T("Game's own (default)"), Loc.T("NVIDIA DLSS - sharper image") };
 
         public int UpscaleIndex
         {
@@ -236,7 +237,7 @@ namespace AstroHybrid.App.ViewModels
         }
 
         // Frame Generation
-        public string[] FrameGenLabels => new[] { "Off (default)", "Auto - reach target (recommended)", "Fixed 2x", "Fixed 3x", "Fixed 4x" };
+        public string[] FrameGenLabels => new[] { Loc.T("Off (default)"), Loc.T("Auto - reach target (recommended)"), Loc.T("Fixed 2x"), Loc.T("Fixed 3x"), Loc.T("Fixed 4x") };
 
         public int FrameGenIndex
         {
@@ -259,7 +260,7 @@ namespace AstroHybrid.App.ViewModels
         }
 
         // Frame Gen Target
-        public string[] FrameGenTargetLabels => new[] { "No lock - game as fast as it can", "50 FPS on screen", "60 FPS on screen (recommended)", "90 FPS on screen", "120 FPS on screen", "144 FPS on screen", "165 FPS on screen" };
+        public string[] FrameGenTargetLabels => new[] { Loc.T("No lock - game as fast as it can"), Loc.T("50 FPS on screen"), Loc.T("60 FPS on screen (recommended)"), Loc.T("90 FPS on screen"), Loc.T("120 FPS on screen"), Loc.T("144 FPS on screen"), Loc.T("165 FPS on screen") };
 
         public int FrameGenTargetIndex
         {
@@ -292,7 +293,7 @@ namespace AstroHybrid.App.ViewModels
         }
 
         // Performance Overlay
-        public string[] OverlayLabels => new[] { "Off (F2 shows it)", "FPS only", "FPS + CPU, GPU, VRAM, RAM", "Everything (all stats)" };
+        public string[] OverlayLabels => new[] { Loc.T("Off (F2 shows it)"), "FPS only", "FPS + CPU, GPU, VRAM, RAM", Loc.T("Everything (all stats)") };
 
         public int OverlayIndex
         {

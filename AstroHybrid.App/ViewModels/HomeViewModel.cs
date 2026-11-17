@@ -1,4 +1,5 @@
 using System;
+using AstroHybrid.App.Services;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
@@ -21,24 +22,24 @@ namespace AstroHybrid.App.ViewModels
         }
 
         public string GameStatus => _mainViewModel.InstallationState?.IsInstalled == true
-            ? "Installed and Ready"
-            : "Not Installed";
+            ? Loc.T("Installed and Ready")
+            : Loc.T("Not Installed");
 
-        public string GameVersion => _mainViewModel.InstallationState?.GameVersion ?? "Unknown";
+        public string GameVersion => _mainViewModel.InstallationState?.GameVersion ?? Loc.T("Unknown");
 
-        public string GameTitleId => _mainViewModel.InstallationState?.GameTitleId ?? "Unknown";
+        public string GameTitleId => _mainViewModel.InstallationState?.GameTitleId ?? Loc.T("Unknown");
 
-        public string CpuInfo => _mainViewModel.HardwareInfo?.CpuName ?? "Unknown";
+        public string CpuInfo => _mainViewModel.HardwareInfo?.CpuName ?? Loc.T("Unknown");
 
-        public string GpuInfo => _mainViewModel.HardwareInfo?.GpuName ?? "Unknown";
+        public string GpuInfo => _mainViewModel.HardwareInfo?.GpuName ?? Loc.T("Unknown");
 
         public string RamInfo => _mainViewModel.HardwareInfo?.RamGb > 0
             ? $"{_mainViewModel.HardwareInfo.RamGb} GB"
-            : "Unknown";
+            : Loc.T("Unknown");
 
         public string DisplayInfo => _mainViewModel.HardwareInfo != null
             ? $"{_mainViewModel.HardwareInfo.ScreenWidth}x{_mainViewModel.HardwareInfo.ScreenHeight}\n{_mainViewModel.HardwareInfo.RefreshRate} Hz"
-            : "Unknown";
+            : Loc.T("Unknown");
 
         public string CurrentGraphicsConfig => BuildGraphicsConfigString();
 
@@ -66,11 +67,11 @@ namespace AstroHybrid.App.ViewModels
                 parts.Add(sizeLabels[_mainViewModel.Settings.Size]);
 
             if (_mainViewModel.Settings.Ultrawide)
-                parts.Add("21:9 Ultrawide");
+                parts.Add(Loc.T("21:9 Ultrawide"));
 
-            parts.Add(_mainViewModel.Settings.Fullscreen ? "Fullscreen" : "Windowed");
+            parts.Add(_mainViewModel.Settings.Fullscreen ? Loc.T("Fullscreen") : Loc.T("Windowed"));
 
-            parts.Add(_mainViewModel.Settings.Lighting == 1 ? "RTX ON" : "RTX OFF (Non-RT)");
+            parts.Add(_mainViewModel.Settings.Lighting == 1 ? "RTX ON" : Loc.T("RTX OFF (Non-RT)"));
 
             if (_mainViewModel.Settings.Upscale != 0)
                 parts.Add("DLSS");
@@ -83,7 +84,7 @@ namespace AstroHybrid.App.ViewModels
             }
 
             if (_mainViewModel.Settings.LowLatency)
-                parts.Add("Reflex");
+                parts.Add(Loc.T("Reflex"));
 
             return string.Join(" | ", parts);
         }

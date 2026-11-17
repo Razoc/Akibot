@@ -1,5 +1,6 @@
 using AstroHybrid.App.ViewModels;
 using System;
+using AstroHybrid.App.Services;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
@@ -25,7 +26,7 @@ namespace AstroHybrid.App.Views
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            return (value is bool b && b) ? "Installed and Ready" : "Not Installed";
+            return (value is bool b && b) ? Loc.T("Installed and Ready") : Loc.T("Not Installed");
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

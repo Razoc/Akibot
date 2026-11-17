@@ -1,4 +1,5 @@
 using System;
+using AstroHybrid.App.Services;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
@@ -27,10 +28,11 @@ namespace AstroHybrid.App.Views
         {
             if (value is string status)
             {
-                if (status.Contains("Ready") || status.Contains("Installed"))
-                    return new SolidColorBrush((Color)ColorConverter.ConvertFromString("#00D4AA"));
-                if (status.Contains("Not"))
+                // Negative statuses first: in French "Non installé" also contains "installé".
+                if (status == Loc.T("Not Installed") || status == Loc.T("Not installed") || status == Loc.T("Not Ready"))
                     return new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FF4444"));
+                if (status == Loc.T("Installed and Ready") || status == Loc.T("Ready") || status == Loc.T("Installed"))
+                    return new SolidColorBrush((Color)ColorConverter.ConvertFromString("#00D4AA"));
             }
             return new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FFAA00"));
         }

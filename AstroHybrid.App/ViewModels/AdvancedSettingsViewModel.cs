@@ -1,4 +1,5 @@
 using System;
+using AstroHybrid.App.Services;
 using System.ComponentModel;
 using AstroHybrid.App.Models;
 
@@ -15,7 +16,7 @@ namespace AstroHybrid.App.ViewModels
         }
 
         // Lighting/Renderer
-        public string[] LightingLabels => new[] { "OFF - Faster lighting (Non-RT, recommended)", "ON - Ray Tracing (Original lighting)" };
+        public string[] LightingLabels => new[] { Loc.T("OFF - Faster lighting (Non-RT, recommended)"), Loc.T("ON - Ray Tracing (Original lighting)") };
 
         public int LightingIndex
         {
@@ -50,17 +51,17 @@ namespace AstroHybrid.App.ViewModels
             }
         }
 
-        public string LanguageNote => "The language the game shows its text in. Auto follows your Windows language when the game has it.";
+        public string LanguageNote => Loc.T("The language the game shows its text in. Auto follows your Windows language when the game has it.");
 
         private static readonly string[] LanguageNames =
         {
-            "Auto (Windows language)", "Japanese", "English (United States)", "French", "Spanish", "German", "Italian", "Dutch",
-            "Portuguese (Portugal)", "Russian", "Korean", "Chinese (Traditional)", "Chinese (Simplified)", "Finnish", "Swedish",
-            "Danish", "Norwegian", "Polish", "Portuguese (Brazil)", "English (United Kingdom)", "Turkish", "Spanish (Latin America)",
-            "Arabic", "French (Canada)", "Czech", "Hungarian", "Greek", "Romanian", "Thai", "Vietnamese", "Indonesian", "Ukrainian",
+            Loc.T("Auto (Windows language)"), Loc.T("Japanese"), Loc.T("English (United States)"), Loc.T("French"), Loc.T("Spanish"), Loc.T("German"), Loc.T("Italian"), Loc.T("Dutch"),
+            Loc.T("Portuguese (Portugal)"), Loc.T("Russian"), Loc.T("Korean"), Loc.T("Chinese (Traditional)"), Loc.T("Chinese (Simplified)"), Loc.T("Finnish"), Loc.T("Swedish"),
+            Loc.T("Danish"), Loc.T("Norwegian"), Loc.T("Polish"), Loc.T("Portuguese (Brazil)"), Loc.T("English (United Kingdom)"), Loc.T("Turkish"), Loc.T("Spanish (Latin America)"),
+            Loc.T("Arabic"), Loc.T("French (Canada)"), Loc.T("Czech"), Loc.T("Hungarian"), Loc.T("Greek"), Loc.T("Romanian"), Loc.T("Thai"), Loc.T("Vietnamese"), Loc.T("Indonesian"), Loc.T("Ukrainian"),
         };
 
-        public string[] SpeedLabels => new[] { "100% - real time", "95%", "90%", "85%", "80%", "75% (recommended)" };
+        public string[] SpeedLabels => new[] { Loc.T("100% - real time"), "95%", "90%", "85%", "80%", Loc.T("75% (recommended)") };
 
         public int SpeedIndex
         {
@@ -227,7 +228,7 @@ namespace AstroHybrid.App.ViewModels
         // Info texts
         public string LightingNote => "Faster lighting uses the NonRT renderer (AstroBot-NonRT.exe) which disables GI probes and some lighting shaders for better performance.";
 
-        public string SpeedNote => "The game runs in real-time regardless of FPS. Lower values slow down the game simulation.";
+        public string SpeedNote => Loc.T("The game runs in real-time regardless of FPS. Lower values slow down the game simulation.");
 
         public string HangWatchdogNote => "Records diagnostics when the game hangs. Turn on when reporting a freeze; it costs about 1.8 ms per frame on RTX 50 cards, so it is off by default.";
 
@@ -239,13 +240,13 @@ namespace AstroHybrid.App.ViewModels
 
         public string MotionNote => "Enables accelerometer/gyroscope input for shake and tilt moves. Disable if your controller doesn't have motion sensors.";
 
-        public string TriggerNote2 => "Enables DualSense trigger effect state reporting. The game ignores L2/R2 without it.";
+        public string TriggerNote2 => Loc.T("Enables DualSense trigger effect state reporting. The game ignores L2/R2 without it.");
 
         public string DualSenseWirelessSpeakerNote => "Routes the DualSense speaker audio over Bluetooth HID. Requires a Bluetooth-connected DualSense; wired controllers use USB audio instead.";
 
         public string DualSenseWirelessHapticsNote => "Routes DualSense haptic feedback over Bluetooth HID. Requires a Bluetooth-connected DualSense; wired controllers use USB audio instead.";
 
-        public string SkipIntroNote => "Skips the opening PlayStation Studios and Team Asobi intro videos (-skipIntro).";
+        public string SkipIntroNote => Loc.T("Skips the opening PlayStation Studios and Team Asobi intro videos (-skipIntro).");
 
         public string ExperimentalWarning => "Experimental features may cause instability. Only enable if you understand the risks and are prepared to debug issues.";
     }

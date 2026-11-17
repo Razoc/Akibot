@@ -1,4 +1,5 @@
 using System;
+using AstroHybrid.App.Services;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
@@ -26,25 +27,25 @@ namespace AstroHybrid.App.ViewModels
 
         public InstallationState? State => _mainViewModel.InstallationState;
 
-        public string InstallPath => _mainViewModel.InstallationState?.InstallPath ?? "Not installed";
+        public string InstallPath => _mainViewModel.InstallationState?.InstallPath ?? Loc.T("Not installed");
 
-        public string GameDumpPath => _mainViewModel.InstallationState?.GameDumpPath ?? "Not configured";
+        public string GameDumpPath => _mainViewModel.InstallationState?.GameDumpPath ?? Loc.T("Not configured");
 
-        public string GameVersion => _mainViewModel.InstallationState?.GameVersion ?? "Unknown";
+        public string GameVersion => _mainViewModel.InstallationState?.GameVersion ?? Loc.T("Unknown");
 
-        public string GameTitleId => _mainViewModel.InstallationState?.GameTitleId ?? "Unknown";
+        public string GameTitleId => _mainViewModel.InstallationState?.GameTitleId ?? Loc.T("Unknown");
 
-        public string InstalledAt => _mainViewModel.InstallationState?.InstalledAt?.ToString("yyyy-MM-dd HH:mm") ?? "Never";
+        public string InstalledAt => _mainViewModel.InstallationState?.InstalledAt?.ToString("yyyy-MM-dd HH:mm") ?? Loc.T("Never");
 
         public string InstallSize => _mainViewModel.InstallationState?.InstallSizeBytes > 0
             ? FormatBytes(_mainViewModel.InstallationState.InstallSizeBytes)
-            : "Unknown";
+            : Loc.T("Unknown");
 
         public bool IsInstalled => _mainViewModel.InstallationState?.IsInstalled == true;
 
-        public string AnyPs5Version => _mainViewModel.Settings.InstallationManifest?.AnyPs5Version ?? "Unknown";
+        public string AnyPs5Version => _mainViewModel.Settings.InstallationManifest?.AnyPs5Version ?? Loc.T("Unknown");
 
-        public string KytyVersion => _mainViewModel.Settings.InstallationManifest?.KytyVersion ?? "Unknown";
+        public string KytyVersion => _mainViewModel.Settings.InstallationManifest?.KytyVersion ?? Loc.T("Unknown");
 
         public ICommand RepairCommand { get; }
         public ICommand RebuildCommand { get; }

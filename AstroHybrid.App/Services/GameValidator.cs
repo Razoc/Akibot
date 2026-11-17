@@ -25,7 +25,7 @@ namespace AstroHybrid.App.Services
                 if (!Directory.Exists(gamePath))
                 {
                     gameInfo.IsValid = false;
-                    gameInfo.ValidationError = "Selected folder does not exist.";
+                    gameInfo.ValidationError = Loc.T("Selected folder does not exist.");
                     return gameInfo;
                 }
 
@@ -34,7 +34,7 @@ namespace AstroHybrid.App.Services
                 if (!File.Exists(ebootPath))
                 {
                     gameInfo.IsValid = false;
-                    gameInfo.ValidationError = "eboot.bin not found in the selected folder. Please select the game dump root folder (containing eboot.bin).";
+                    gameInfo.ValidationError = Loc.T("eboot.bin not found in the selected folder. Please select the game dump root folder (containing eboot.bin).");
                     return gameInfo;
                 }
 
@@ -87,7 +87,7 @@ namespace AstroHybrid.App.Services
                 if (!Directory.Exists(dataPath) && !File.Exists(archivePath))
                 {
                     gameInfo.IsValid = false;
-                    gameInfo.ValidationError = "Neither a 'data' directory nor 'app0.zar' was found in the game dump.";
+                    gameInfo.ValidationError = Loc.T("Neither a 'data' directory nor 'app0.zar' was found in the game dump.");
                     return gameInfo;
                 }
 
@@ -95,7 +95,7 @@ namespace AstroHybrid.App.Services
                 gameInfo.ValidationError = null;
                 if (!testedVersion)
                 {
-                    gameInfo.Version += " (not tested; features this version does not support turn themselves off)";
+                    gameInfo.Version += Loc.T(" (not tested; features this version does not support turn themselves off)");
                 }
                 return gameInfo;
             }

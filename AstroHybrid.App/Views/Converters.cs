@@ -1,4 +1,5 @@
 using System;
+using AstroHybrid.App.Services;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
@@ -67,7 +68,7 @@ namespace AstroHybrid.App.Views
                 }
                 return $"{size:F1} {suffixes[i]}";
             }
-            return "Unknown";
+            return Loc.T("Unknown");
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
@@ -81,8 +82,8 @@ namespace AstroHybrid.App.Views
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             if (value is bool boolValue)
-                return boolValue ? "Installed" : "Not Installed";
-            return "Unknown";
+                return boolValue ? Loc.T("Installed") : Loc.T("Not Installed");
+            return Loc.T("Unknown");
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

@@ -1,4 +1,5 @@
 using System;
+using AstroHybrid.App.Services;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
@@ -23,8 +24,8 @@ namespace AstroHybrid.App.Views
                 if (_viewModel.IsInstalling && _viewModel.ProgressPercent < 100)
                 {
                     e.Cancel = true;
-                    MessageBox.Show(this, "Setup is still converting the game (about a minute). Please wait until it finishes.",
-                        "AstroHybrid Setup", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show(this, Loc.T("Setup is still converting the game (about a minute). Please wait until it finishes."),
+                        Loc.T("AstroHybrid Setup"), MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             };
             _viewModel.SetupCancelled += OnSetupCancelled;

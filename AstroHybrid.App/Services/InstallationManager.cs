@@ -65,7 +65,7 @@ namespace AstroHybrid.App.Services
             }
             else
             {
-                state.ValidationError = "Installation not found or incomplete.";
+                state.ValidationError = Loc.T("Installation not found or incomplete.");
             }
 
             return state;
@@ -214,7 +214,7 @@ namespace AstroHybrid.App.Services
             var gameInfo = await _gameValidator.ValidateGameDumpAsync(gameDumpPath);
             if (!gameInfo.IsValid)
             {
-                throw new InvalidOperationException(gameInfo.ValidationError ?? "Invalid game dump");
+                throw new InvalidOperationException(gameInfo.ValidationError ?? Loc.T("Invalid game dump"));
             }
 
             // Save game dump path to settings
@@ -269,7 +269,7 @@ namespace AstroHybrid.App.Services
         // AstroHybrid folder instead, then run Repair once so app0 is linked again.
         public Task ChangeInstallLocationAsync(string newPath, IProgress<SetupStep>? progress = null)
         {
-            throw new InvalidOperationException("To move the game, close the app, move the whole AstroHybrid folder, then use Repair once.");
+            throw new InvalidOperationException(Loc.T("To move the game, close the app, move the whole AstroHybrid folder, then use Repair once."));
         }
 
         // Removes what the setup built from the dump (the game programs, app0 and the feature file); the runtime

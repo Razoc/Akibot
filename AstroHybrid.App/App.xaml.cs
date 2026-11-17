@@ -1,6 +1,8 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Threading.Tasks;
 using System.Windows;
 using AstroHybrid.App.Models;
 using AstroHybrid.App.Services;
@@ -11,26 +13,45 @@ namespace AstroHybrid.App
 {
     public partial class App : Application
     {
-        private SettingsManager _settingsManager;
-        private AppSettings _settings;
+        private SettingsManager _settingsManager = null!;
+        private AppSettings _settings = null!;
+        private static string? _root;
+
+        // Akibot ships as one exe: its library DLLs are embedded resources, loaded here when the CLR cannot
+        // find them next to the exe (any version is accepted, which also replaces the binding redirects).
+        static App()
+        {
+            AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
+            {
+                var name = new AssemblyName(args.Name).Name + ".dll";
+                using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(name);
+                if (stream == null) return null;
+                var bytes = new byte[stream.Length];
+                stream.Read(bytes, 0, bytes.Length);
+                return Assembly.Load(bytes);
+            };
+        }
 
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+            var userData = AkibotInfo.LoadUserData();
+            Loc.Init(userData.Language);
+            AkibotUpdater.CleanUpOldExe();
 
             // Set up global exception handling
             AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
             {
                 var ex = args.ExceptionObject as Exception;
                 LogException(ex);
-                MessageBox.Show($"An unexpected error occurred:\n{ex?.Message}", "AstroHybrid Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(Loc.T("Common.UnexpectedError", ex?.Message ?? ""), "Akibot", MessageBoxButton.OK, MessageBoxImage.Error);
                 Shutdown(1);
             };
 
             DispatcherUnhandledException += (sender, args) =>
             {
                 LogException(args.Exception);
-                MessageBox.Show($"An unexpected error occurred:\n{args.Exception.Message}", "AstroHybrid Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(Loc.T("Common.UnexpectedError", args.Exception.Message), "Akibot", MessageBoxButton.OK, MessageBoxImage.Error);
                 args.Handled = true;
                 Shutdown(1);
             };
@@ -42,6 +63,13 @@ namespace AstroHybrid.App
                 RunSetupWithoutWindow(e.Args[1]);
                 return;
             }
+            // Akibot.exe --install "<folder>": the install window's work without a window (exit code 0 on
+            // success; progress in <folder>\Logs\install.log). No shortcuts.
+            if (e.Args.Length == 2 && e.Args[0] == "--install")
+            {
+                RunInstallWithoutWindow(e.Args[1]);
+                return;
+            }
             // AstroHybrid.exe --remove-game: removes what the setup built (Installation page, Uninstall).
             if (e.Args.Length == 1 && e.Args[0] == "--remove-game")
             {
@@ -51,6 +79,14 @@ namespace AstroHybrid.App
 
             try
             {
+                // Not inside an install folder: go to the saved install, or install now.
+                if (FindInstallUpwards() == null)
+                {
+                    StartFromOutsideInstall(userData);
+                    return;
+                }
+                OfferRuntimeUpdate();
+
                 // Initialize settings
                 InitializeSettings();
                 LogDebug($"Settings loaded. FirstRunComplete: {_settings.FirstRunComplete}");
@@ -100,8 +136,79 @@ namespace AstroHybrid.App
             catch (Exception ex)
             {
                 LogException(ex);
-                MessageBox.Show($"Startup error:\n{ex}", "AstroHybrid Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(Loc.T("Common.StartupError", ex.ToString()), "Akibot", MessageBoxButton.OK, MessageBoxImage.Error);
                 Shutdown(1);
+            }
+        }
+
+        // Akibot.exe started outside an install folder (for example from Downloads).
+        private void StartFromOutsideInstall(AkibotInfo.UserData userData)
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var installDir = AkibotInfo.IsInstallFolder(userData.InstallDir) ? userData.InstallDir : null;
+            if (installDir == null)
+            {
+                string? folder = null;
+                while (true)
+                {
+                    var window = new InstallWindow { StartFolder = folder };
+                    window.ShowDialog();
+                    if (window.LanguageChanged) { folder = window.ChosenFolder; continue; }
+                    installDir = window.InstalledDirectory;
+                    break;
+                }
+                if (installDir == null) { Shutdown(0); return; }
+            }
+            else
+            {
+                // Already installed: a newer Akibot.exe replaces the installed one.
+                var installed = Path.Combine(installDir, AkibotInfo.ExeName);
+                try
+                {
+                    var installedVersion = File.Exists(installed) ? AssemblyName.GetAssemblyName(installed).Version : null;
+                    if (installedVersion == null || installedVersion < AkibotInfo.CurrentVersion)
+                        AkibotInstaller.CopySelf(installDir);
+                }
+                catch { }
+            }
+            Process.Start(new ProcessStartInfo(Path.Combine(installDir, AkibotInfo.ExeName)) { UseShellExecute = true, WorkingDirectory = installDir });
+            Shutdown(0);
+        }
+
+        // An install whose runtime pin changed offers to update it; the setup wizard then rebuilds the game.
+        private void OfferRuntimeUpdate()
+        {
+            var root = GetRootDirectory();
+            var installed = AkibotInfo.InstalledRuntimeVersion(root);
+            if (installed == "" || installed == AkibotInfo.RuntimeVersion)
+                return;
+            if (MessageBox.Show(Loc.T("Runtime.UpdateAvailable", AkibotInfo.RuntimeVersion, installed), "Akibot",
+                    MessageBoxButton.YesNo, MessageBoxImage.Information) != MessageBoxResult.Yes)
+                return;
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var window = new InstallWindow(root);
+            if (window.ShowDialog() != true)
+                return; // keep the current runtime
+            InitializeSettings();
+            _settings.FirstRunComplete = false; // rebuild AstroBot.exe with the new runtime
+            _settingsManager.Save(_settings);
+        }
+
+        private async Task CheckForAkibotUpdateAsync()
+        {
+            try
+            {
+                var release = await AkibotUpdater.CheckAsync();
+                if (release == null) return;
+                if (MessageBox.Show(Loc.T("Update.AskInstall", release.VersionText, AkibotInfo.CurrentVersionText), "Akibot",
+                        MessageBoxButton.YesNo, MessageBoxImage.Information) != MessageBoxResult.Yes)
+                    return;
+                await AkibotUpdater.InstallAndRestartAsync(release, null);
+            }
+            catch (Exception ex)
+            {
+                LogException(ex);
+                MessageBox.Show(Loc.T("Update.Failed", ex.Message), "Akibot", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
@@ -109,7 +216,7 @@ namespace AstroHybrid.App
         {
             try
             {
-                var logPath = Path.Combine(GetRootDirectory(), "Logs", "astrohybrid-debug.log");
+                var logPath = Path.Combine(GetRootDirectory(), "Logs", "akibot-debug.log");
                 Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
                 File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}\n");
             }
@@ -138,6 +245,35 @@ namespace AstroHybrid.App
             catch (Exception ex)
             {
                 File.AppendAllText(log, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] FAILED: {ex}\r\n");
+                Shutdown(2);
+            }
+        }
+
+        private async void RunInstallWithoutWindow(string folder)
+        {
+            var dir = Path.GetFullPath(folder);
+            var log = Path.Combine(dir, "Logs", "install.log");
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(log)!);
+                var last = "";
+                var progress = new Progress<(int Percent, string Message)>(p =>
+                {
+                    if (p.Message == last) return;
+                    last = p.Message;
+                    File.AppendAllText(log, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {p.Percent,3}% {p.Message}\r\n");
+                });
+                await AkibotInstaller.InstallRuntimeAsync(dir, progress, System.Threading.CancellationToken.None);
+                AkibotInstaller.CopySelf(dir);
+                var data = AkibotInfo.LoadUserData();
+                data.InstallDir = dir;
+                AkibotInfo.SaveUserData(data);
+                File.AppendAllText(log, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] done: runtime {AkibotInfo.RuntimeVersion}\r\n");
+                Shutdown(0);
+            }
+            catch (Exception ex)
+            {
+                try { File.AppendAllText(log, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] FAILED: {ex}\r\n"); } catch { }
                 Shutdown(2);
             }
         }
@@ -179,6 +315,7 @@ namespace AstroHybrid.App
             MainWindow = mainWindow;
             ShutdownMode = ShutdownMode.OnMainWindowClose;
             mainWindow.Show();
+            _ = CheckForAkibotUpdateAsync();
         }
 
         private void InitializeApplication()
@@ -203,6 +340,11 @@ namespace AstroHybrid.App
         // app works next to the old launcher and from its own build folder; else the exe's folder.
         private static string GetRootDirectory()
         {
+            return _root ??= FindInstallUpwards() ?? Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "";
+        }
+
+        private static string? FindInstallUpwards()
+        {
             var exeDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "";
             for (var dir = new DirectoryInfo(exeDir); dir != null; dir = dir.Parent)
             {
@@ -211,14 +353,14 @@ namespace AstroHybrid.App
                     return dir.FullName;
                 }
             }
-            return exeDir;
+            return null;
         }
 
         private void LogException(Exception? ex)
         {
             try
             {
-                var logPath = Path.Combine(GetRootDirectory(), "Logs", "astrohybrid-error.log");
+                var logPath = Path.Combine(GetRootDirectory(), "Logs", "akibot-error.log");
                 Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
                 File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {ex}\n\n");
             }

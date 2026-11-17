@@ -1,4 +1,5 @@
 using System;
+using AstroHybrid.App.Services;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
@@ -88,9 +89,9 @@ namespace AstroHybrid.App
         {
             if (value is bool boolValue)
             {
-                return boolValue ? "Ready" : "Not Ready";
+                return boolValue ? Loc.T("Ready") : Loc.T("Not Ready");
             }
-            return "Unknown";
+            return Loc.T("Unknown");
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

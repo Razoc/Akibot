@@ -1,6 +1,7 @@
 <UserControl x:Class="AstroHybrid.App.Views.HomeView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:svc="clr-namespace:AstroHybrid.App.Services"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:AstroHybrid.App.Views"
@@ -28,8 +29,8 @@
 
                     <!-- Left: Game Info -->
                     <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,40,0">
-                        <TextBlock Text="ASTRO BOT" Style="{StaticResource HeroTitleStyle}"/>
-                        <TextBlock Text="Native PC Port • AstroHybrid" Style="{StaticResource HeroSubtitleStyle}" Margin="0,8,0,0"/>
+                        <TextBlock Text="{svc:Tr 'ASTRO BOT'}" Style="{StaticResource HeroTitleStyle}"/>
+                        <TextBlock Text="{svc:Tr 'Native PC Port • AstroHybrid'}" Style="{StaticResource HeroSubtitleStyle}" Margin="0,8,0,0"/>
 
                         <!-- Version Info Row -->
                         <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
@@ -37,7 +38,7 @@
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="📦" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                     <StackPanel>
-                                        <TextBlock Text="INSTALLED" Style="{StaticResource VersionBadgeLabelStyle}"/>
+                                        <TextBlock Text="{svc:Tr 'INSTALLED'}" Style="{StaticResource VersionBadgeLabelStyle}"/>
                                         <TextBlock Text="{Binding GameVersion}" Style="{StaticResource VersionBadgeValueStyle}"/>
                                     </StackPanel>
                                 </StackPanel>
@@ -47,7 +48,7 @@
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="🆕" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                     <StackPanel>
-                                        <TextBlock Text="AVAILABLE" Style="{StaticResource VersionBadgeLabelStyle}"/>
+                                        <TextBlock Text="{svc:Tr 'AVAILABLE'}" Style="{StaticResource VersionBadgeLabelStyle}"/>
                                         <TextBlock Text="{Binding UpdateState.LatestUpdate.Version}" Style="{StaticResource VersionBadgeValueStyle}" Foreground="{StaticResource AccentBrush}"/>
                                     </StackPanel>
                                 </StackPanel>
@@ -57,8 +58,8 @@
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="✓" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{StaticResource SuccessBrush}"/>
                                     <StackPanel>
-                                        <TextBlock Text="LATEST" Style="{StaticResource VersionBadgeLabelStyle}"/>
-                                        <TextBlock Text="UP TO DATE" Style="{StaticResource VersionBadgeValueStyle}" Foreground="{StaticResource SuccessBrush}"/>
+                                        <TextBlock Text="{svc:Tr 'LATEST'}" Style="{StaticResource VersionBadgeLabelStyle}"/>
+                                        <TextBlock Text="{svc:Tr 'UP TO DATE'}" Style="{StaticResource VersionBadgeValueStyle}" Foreground="{StaticResource SuccessBrush}"/>
                                     </StackPanel>
                                 </StackPanel>
                             </Border>
@@ -79,7 +80,7 @@
                             <Viewbox Margin="40" Stretch="Uniform">
                                 <TextBlock Text="★" FontSize="120" Foreground="{StaticResource PrimaryBrush}" Opacity="0.6"/>
                             </Viewbox>
-                            <TextBlock Text="ASTRO BOT" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}"
+                            <TextBlock Text="{svc:Tr 'ASTRO BOT'}" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextMutedBrush}"
                                        HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,20"/>
                         </Grid>
                     </Border>
@@ -97,38 +98,38 @@
 
                 <Border Grid.Column="0" Style="{StaticResource StatCardStyle}">
                     <StackPanel>
-                        <TextBlock Text="GAME VERSION" Style="{StaticResource StatLabelStyle}"/>
+                        <TextBlock Text="{svc:Tr 'GAME VERSION'}" Style="{StaticResource StatLabelStyle}"/>
                         <TextBlock Text="{Binding GameVersion}" Style="{StaticResource StatValueStyle}" FontSize="22"/>
-                        <TextBlock Style="{StaticResource StatDetailStyle}"><Run Text="Title ID: "/><Run Text="{Binding GameTitleId, Mode=OneWay}"/></TextBlock>
+                        <TextBlock Style="{StaticResource StatDetailStyle}"><Run Text="{svc:Tr 'Title ID: '}"/><Run Text="{Binding GameTitleId, Mode=OneWay}"/></TextBlock>
                     </StackPanel>
                 </Border>
 
                 <Border Grid.Column="1" Style="{StaticResource StatCardStyle}" Margin="12,0,0,0">
                     <StackPanel>
-                        <TextBlock Text="CPU" Style="{StaticResource StatLabelStyle}"/>
+                        <TextBlock Text="{svc:Tr 'CPU'}" Style="{StaticResource StatLabelStyle}"/>
                         <TextBlock Text="{Binding CpuInfo}" Style="{StaticResource StatValueStyle}" FontSize="16" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
 
                 <Border Grid.Column="2" Style="{StaticResource StatCardStyle}" Margin="12,0,0,0">
                     <StackPanel>
-                        <TextBlock Text="GPU" Style="{StaticResource StatLabelStyle}"/>
+                        <TextBlock Text="{svc:Tr 'GPU'}" Style="{StaticResource StatLabelStyle}"/>
                         <TextBlock Text="{Binding GpuInfo}" Style="{StaticResource StatValueStyle}" FontSize="16" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
 
                 <Border Grid.Column="3" Style="{StaticResource StatCardStyle}" Margin="12,0,0,0">
                     <StackPanel>
-                        <TextBlock Text="RAM / DISPLAY" Style="{StaticResource StatLabelStyle}"/>
+                        <TextBlock Text="{svc:Tr 'RAM / DISPLAY'}" Style="{StaticResource StatLabelStyle}"/>
                         <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                             <StackPanel>
                                 <TextBlock Text="{Binding RamInfo}" Style="{StaticResource StatValueStyle}" FontSize="18"/>
-                                <TextBlock Text="RAM" Style="{StaticResource StatDetailStyle}"/>
+                                <TextBlock Text="{svc:Tr 'RAM'}" Style="{StaticResource StatDetailStyle}"/>
                             </StackPanel>
                             <TextBlock Text="|" Style="{StaticResource StatDetailStyle}" VerticalAlignment="Center" Margin="16,0"/>
                             <StackPanel>
                                 <TextBlock Text="{Binding DisplayInfo}" Style="{StaticResource StatValueStyle}" FontSize="14"/>
-                                <TextBlock Text="Display" Style="{StaticResource StatDetailStyle}"/>
+                                <TextBlock Text="{svc:Tr 'Display'}" Style="{StaticResource StatDetailStyle}"/>
                             </StackPanel>
                         </StackPanel>
                     </StackPanel>
@@ -139,8 +140,8 @@
             <Border Style="{StaticResource ConfigCardStyle}" Margin="0,0,0,24">
                 <StackPanel>
                     <Grid>
-                        <TextBlock Text="CURRENT GRAPHICS CONFIGURATION" Style="{StaticResource SectionHeaderStyle}"/>
-                        <Button Content="Graphics Settings" Command="{Binding NavigateToSettingsCommand}"
+                        <TextBlock Text="{svc:Tr 'CURRENT GRAPHICS CONFIGURATION'}" Style="{StaticResource SectionHeaderStyle}"/>
+                        <Button Content="{svc:Tr 'Graphics Settings'}" Command="{Binding NavigateToSettingsCommand}"
                                 Style="{StaticResource TextButtonStyle}" HorizontalAlignment="Right" FontSize="12" Padding="8,4"/>
                     </Grid>
                     <TextBlock Text="{Binding CurrentGraphicsConfig}" Style="{StaticResource ConfigTextStyle}" FontFamily="Consolas" FontSize="13" Margin="0,12,0,0"/>
@@ -152,14 +153,14 @@
                     Visibility="{Binding UpdateState.UpdateAvailable, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <StackPanel>
                     <Grid>
-                        <TextBlock Text="WHAT'S NEW IN" Style="{StaticResource SectionHeaderStyle}"/>
+                        <TextBlock Text="{svc:Tr 'WHAT\'S NEW IN'}" Style="{StaticResource SectionHeaderStyle}"/>
                         <TextBlock Text="{Binding UpdateState.LatestUpdate.Version, StringFormat=' {0}'}" Style="{StaticResource SectionHeaderStyle}" Foreground="{StaticResource AccentBrush}"/>
                     </Grid>
                     <TextBlock Text="{Binding UpdateState.LatestUpdate.ReleaseNotes}" Style="{StaticResource NewsTextStyle}" TextWrapping="Wrap" Margin="0,12,0,0"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
-                        <Button Content="View Full Release Notes" Command="{Binding NavigateToSettingsCommand}"
+                        <Button Content="{svc:Tr 'View Full Release Notes'}" Command="{Binding NavigateToSettingsCommand}"
                                 Style="{StaticResource TextButtonStyle}" FontSize="12" Padding="8,4"/>
-                        <Button Content="Update Now" Command="{Binding DownloadUpdateCommand}"
+                        <Button Content="{svc:Tr 'Update Now'}" Command="{Binding DownloadUpdateCommand}"
                                 Style="{StaticResource PrimaryButtonStyle}" MinWidth="120" MinHeight="36" Margin="12,0,0,0"
                                 FontSize="13" FontWeight="SemiBold"/>
                     </StackPanel>
@@ -169,16 +170,16 @@
             <!-- Quick Actions -->
             <Border Style="{StaticResource CardStyle}">
                 <StackPanel>
-                    <TextBlock Text="QUICK ACTIONS" Style="{StaticResource SectionHeaderStyle}"/>
+                    <TextBlock Text="{svc:Tr 'QUICK ACTIONS'}" Style="{StaticResource SectionHeaderStyle}"/>
                     <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                        <Button Content="Graphics Settings" Command="{Binding NavigateToSettingsCommand}"
+                        <Button Content="{svc:Tr 'Graphics Settings'}" Command="{Binding NavigateToSettingsCommand}"
                                 Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,12,0" MinWidth="160"/>
                         <Button Content="{Binding RayTracingToggleText}" Command="{Binding ToggleRayTracingCommand}"
                                 Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,12,0" MinWidth="140"
-                                ToolTip="Click to toggle Ray Tracing between OFF (Non-RT faster lighting) and ON (Ray Tracing)"/>
-                        <Button Content="Controller Settings" Command="{Binding NavigateToControllerCommand}"
+                                ToolTip="{svc:Tr 'Click to toggle Ray Tracing between OFF (Non-RT faster lighting) and ON (Ray Tracing)'}"/>
+                        <Button Content="{svc:Tr 'Controller Settings'}" Command="{Binding NavigateToControllerCommand}"
                                 Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,12,0" MinWidth="160"/>
-                        <Button Content="Installation" Command="{Binding NavigateToInstallationCommand}"
+                        <Button Content="{svc:Tr 'Installation'}" Command="{Binding NavigateToInstallationCommand}"
                                 Style="{StaticResource SecondaryButtonStyle}" MinWidth="140"/>
                     </StackPanel>
                 </StackPanel>

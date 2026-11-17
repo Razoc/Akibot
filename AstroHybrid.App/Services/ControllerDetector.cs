@@ -55,7 +55,7 @@ namespace AstroHybrid.App.Services
             {
                 controllers.Add(new ControllerInfo
                 {
-                    Name = "No controller detected",
+                    Name = Loc.T("No controller detected"),
                     Type = "None",
                     InstanceId = "",
                     IsConnected = false

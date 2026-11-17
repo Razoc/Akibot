@@ -185,7 +185,7 @@ namespace AstroHybrid.App.ViewModels
         private async Task InitializeAsync()
         {
             IsLoading = true;
-            StatusMessage = "Loading...";
+            StatusMessage = Loc.T("Loading...");
 
             try
             {
@@ -211,7 +211,7 @@ namespace AstroHybrid.App.ViewModels
                     ApplyBestSettings();
                 }
 
-                StatusMessage = InstallationState?.IsInstalled == true ? "Ready" : "Setup required";
+                StatusMessage = InstallationState?.IsInstalled == true ? Loc.T("Ready") : Loc.T("Setup required");
 
                 // A game converted by an earlier version on a CPU that is not an AMD one still holds AMD-only
                 // instructions and hangs after the title screen: convert it again, once.
@@ -223,15 +223,15 @@ namespace AstroHybrid.App.ViewModels
                 {
                     var answer = MessageBox.Show(
                         "This PC's processor needs an updated conversion of the game (it fixes the hang after the title screen on Intel processors).\n\nConvert the game again now? It takes about a minute.",
-                        "AstroHybrid", MessageBoxButton.YesNo, MessageBoxImage.Information);
+                        Loc.T("AstroHybrid"), MessageBoxButton.YesNo, MessageBoxImage.Information);
                     if (answer == MessageBoxResult.Yes)
                     {
-                        StatusMessage = "Converting the game for this processor...";
+                        StatusMessage = Loc.T("Converting the game for this processor...");
                         try
                         {
                             await _installationManager.RepairAsync();
                             InstallationState = await _installationManager.GetInstallationStateAsync();
-                            StatusMessage = "Ready";
+                            StatusMessage = Loc.T("Ready");
                         }
                         catch (Exception ex)
                         {
@@ -264,12 +264,12 @@ namespace AstroHybrid.App.ViewModels
         {
             if (InstallationState?.IsInstalled != true)
             {
-                MessageBox.Show("Please complete the setup first.", "AstroHybrid", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(Loc.T("Please complete the setup first."), Loc.T("AstroHybrid"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             IsLaunching = true;
-            StatusMessage = "Launching Astro Bot...";
+            StatusMessage = Loc.T("Launching Astro Bot...");
 
             try
             {
@@ -288,12 +288,12 @@ namespace AstroHybrid.App.ViewModels
                     exitCode = await _launcherService.LaunchGameAsync(Settings, HardwareInfo);
                 }
 
-                StatusMessage = exitCode == 0 ? "Game exited normally" : $"Game exited with code {exitCode}";
+                StatusMessage = exitCode == 0 ? Loc.T("Game exited normally") : Loc.T("Game exited with code {0}", exitCode);
             }
             catch (Exception ex)
             {
                 StatusMessage = $"Launch error: {ex.Message}";
-                MessageBox.Show($"Failed to launch game:\n{ex.Message}", "AstroHybrid", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Failed to launch game:\n{ex.Message}", "Akibot", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -321,7 +321,7 @@ namespace AstroHybrid.App.ViewModels
             Settings.Rumble = RumbleSetting.ToLegacyIndex(70);
 
             _settingsManager.Save(Settings);
-            StatusMessage = "Applied best settings for this PC";
+            StatusMessage = Loc.T("Applied best settings for this PC");
         }
 
         private void RefreshControllers()
@@ -344,13 +344,13 @@ namespace AstroHybrid.App.ViewModels
             if (string.IsNullOrEmpty(Settings.GameDumpPath))
             {
                 // Installs made by the classic launcher or an older version do not know the dump folder: ask once.
-                using (var dialog = new System.Windows.Forms.FolderBrowserDialog { Description = "Select your Astro Bot dump folder (the one with eboot.bin)", ShowNewFolderButton = false })
+                using (var dialog = new System.Windows.Forms.FolderBrowserDialog { Description = Loc.T("Select your Astro Bot dump folder (the one with eboot.bin)"), ShowNewFolderButton = false })
                 {
                     if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
                     var info = await new GameValidator().ValidateGameDumpAsync(dialog.SelectedPath);
                     if (!info.IsValid)
                     {
-                        MessageBox.Show(info.ValidationError ?? "That folder is not an Astro Bot dump.", "AstroHybrid", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        MessageBox.Show(info.ValidationError ?? Loc.T("That folder is not an Astro Bot dump."), Loc.T("AstroHybrid"), MessageBoxButton.OK, MessageBoxImage.Warning);
                         return;
                     }
                     Settings.GameDumpPath = dialog.SelectedPath;
@@ -358,12 +358,12 @@ namespace AstroHybrid.App.ViewModels
                 }
             }
 
-            var result = MessageBox.Show("This will rebuild the installation from your game dump. Continue?",
-                "Repair Installation", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            var result = MessageBox.Show(Loc.T("This will rebuild the installation from your game dump. Continue?"),
+                Loc.T("Repair Installation"), MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (result != MessageBoxResult.Yes) return;
 
             IsLoading = true;
-            StatusMessage = "Repairing installation...";
+            StatusMessage = Loc.T("Repairing installation...");
 
             try
             {
@@ -371,11 +371,11 @@ namespace AstroHybrid.App.ViewModels
                 if (success)
                 {
                     InstallationState = await _installationManager.GetInstallationStateAsync();
-                    StatusMessage = "Repair complete";
+                    StatusMessage = Loc.T("Repair complete");
                 }
                 else
                 {
-                    StatusMessage = "Repair failed";
+                    StatusMessage = Loc.T("Repair failed");
                 }
             }
             catch (Exception ex)
@@ -393,13 +393,13 @@ namespace AstroHybrid.App.ViewModels
             if (string.IsNullOrEmpty(Settings.GameDumpPath))
             {
                 // Installs made by the classic launcher or an older version do not know the dump folder: ask once.
-                using (var dialog = new System.Windows.Forms.FolderBrowserDialog { Description = "Select your Astro Bot dump folder (the one with eboot.bin)", ShowNewFolderButton = false })
+                using (var dialog = new System.Windows.Forms.FolderBrowserDialog { Description = Loc.T("Select your Astro Bot dump folder (the one with eboot.bin)"), ShowNewFolderButton = false })
                 {
                     if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
                     var info = await new GameValidator().ValidateGameDumpAsync(dialog.SelectedPath);
                     if (!info.IsValid)
                     {
-                        MessageBox.Show(info.ValidationError ?? "That folder is not an Astro Bot dump.", "AstroHybrid", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        MessageBox.Show(info.ValidationError ?? Loc.T("That folder is not an Astro Bot dump."), Loc.T("AstroHybrid"), MessageBoxButton.OK, MessageBoxImage.Warning);
                         return;
                     }
                     Settings.GameDumpPath = dialog.SelectedPath;
@@ -407,12 +407,12 @@ namespace AstroHybrid.App.ViewModels
                 }
             }
 
-            var result = MessageBox.Show("This will completely rebuild the installation. Continue?",
-                "Rebuild Installation", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            var result = MessageBox.Show(Loc.T("This will completely rebuild the installation. Continue?"),
+                Loc.T("Rebuild Installation"), MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (result != MessageBoxResult.Yes) return;
 
             IsLoading = true;
-            StatusMessage = "Rebuilding installation...";
+            StatusMessage = Loc.T("Rebuilding installation...");
 
             try
             {
@@ -420,11 +420,11 @@ namespace AstroHybrid.App.ViewModels
                 if (success)
                 {
                     InstallationState = await _installationManager.GetInstallationStateAsync();
-                    StatusMessage = "Rebuild complete";
+                    StatusMessage = Loc.T("Rebuild complete");
                 }
                 else
                 {
-                    StatusMessage = "Rebuild failed";
+                    StatusMessage = Loc.T("Rebuild failed");
                 }
             }
             catch (Exception ex)
@@ -441,20 +441,20 @@ namespace AstroHybrid.App.ViewModels
         {
             var dialog = new System.Windows.Forms.FolderBrowserDialog
             {
-                Description = "Select new installation location",
+                Description = Loc.T("Select new installation location"),
                 ShowNewFolderButton = true
             };
 
             if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
                 IsLoading = true;
-                StatusMessage = "Moving installation...";
+                StatusMessage = Loc.T("Moving installation...");
 
                 try
                 {
                     await _installationManager.ChangeInstallLocationAsync(dialog.SelectedPath);
                     InstallationState = await _installationManager.GetInstallationStateAsync();
-                    StatusMessage = "Installation moved successfully";
+                    StatusMessage = Loc.T("Installation moved successfully");
                 }
                 catch (Exception ex)
                 {
@@ -469,16 +469,16 @@ namespace AstroHybrid.App.ViewModels
 
         private async Task UninstallAsync()
         {
-            var result = MessageBox.Show("This will remove all AstroHybrid generated files. Your original game dump will NOT be deleted. Continue?",
-                "Uninstall AstroHybrid", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            var result = MessageBox.Show(Loc.T("This will remove all AstroHybrid generated files. Your original game dump will NOT be deleted. Continue?"),
+                Loc.T("Uninstall AstroHybrid"), MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (result != MessageBoxResult.Yes) return;
 
-            result = MessageBox.Show("Are you sure? This cannot be undone.",
-                "Confirm Uninstall", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            result = MessageBox.Show(Loc.T("Are you sure? This cannot be undone."),
+                Loc.T("Confirm Uninstall"), MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (result != MessageBoxResult.Yes) return;
 
             IsLoading = true;
-            StatusMessage = "Uninstalling...";
+            StatusMessage = Loc.T("Uninstalling...");
 
             try
             {
@@ -486,7 +486,7 @@ namespace AstroHybrid.App.ViewModels
                 InstallationState = await _installationManager.GetInstallationStateAsync();
                 Settings.FirstRunComplete = false;
                 _settingsManager.Save(Settings);
-                StatusMessage = "Uninstall complete. Run setup to reinstall.";
+                StatusMessage = Loc.T("Uninstall complete. Run setup to reinstall.");
             }
             catch (Exception ex)
             {

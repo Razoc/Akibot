@@ -1,6 +1,7 @@
 <UserControl x:Class="AstroHybrid.App.Views.AdvancedSettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:svc="clr-namespace:AstroHybrid.App.Services"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:AstroHybrid.App.Views"
@@ -14,7 +15,7 @@
             <!-- Renderer/Lighting -->
             <Border Style="{StaticResource CardStyle}" Margin="0,0,0,20">
                 <StackPanel>
-                    <TextBlock Text="Renderer" Style="{StaticResource SectionHeaderStyle}"/>
+                    <TextBlock Text="{svc:Tr 'Renderer'}" Style="{StaticResource SectionHeaderStyle}"/>
 
                     <Grid Margin="0,10,0,0">
                         <Grid.ColumnDefinitions>
@@ -22,7 +23,7 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
-                        <TextBlock Grid.Column="0" Style="{StaticResource BodyTextStyle}" Text="Lighting" VerticalAlignment="Center" Width="150"/>
+                        <TextBlock Grid.Column="0" Style="{StaticResource BodyTextStyle}" Text="{svc:Tr 'Lighting'}" VerticalAlignment="Center" Width="150"/>
                         <ComboBox Grid.Column="1"
                                   ItemsSource="{Binding LightingLabels}"
                                   SelectedIndex="{Binding LightingIndex}"
@@ -36,7 +37,7 @@
             <!-- Game Speed -->
             <Border Style="{StaticResource CardStyle}" Margin="0,0,0,20">
                 <StackPanel>
-                    <TextBlock Text="Game Speed" Style="{StaticResource SectionHeaderStyle}"/>
+                    <TextBlock Text="{svc:Tr 'Game Speed'}" Style="{StaticResource SectionHeaderStyle}"/>
 
                     <Grid Margin="0,10,0,0">
                         <Grid.ColumnDefinitions>
@@ -44,7 +45,7 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
-                        <TextBlock Grid.Column="0" Style="{StaticResource BodyTextStyle}" Text="Speed" VerticalAlignment="Center" Width="150"/>
+                        <TextBlock Grid.Column="0" Style="{StaticResource BodyTextStyle}" Text="{svc:Tr 'Speed'}" VerticalAlignment="Center" Width="150"/>
                         <ComboBox Grid.Column="1"
                                   ItemsSource="{Binding SpeedLabels}"
                                   SelectedIndex="{Binding SpeedIndex}"
@@ -57,13 +58,13 @@
 
             <Border Style="{StaticResource CardStyle}" Margin="0,0,0,20">
                 <StackPanel>
-                    <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="Language"/>
+                    <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="{svc:Tr 'Language'}"/>
                     <Grid Margin="0,10,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Style="{StaticResource BodyTextStyle}" Text="Game language" VerticalAlignment="Center" Width="150"/>
+                        <TextBlock Grid.Column="0" Style="{StaticResource BodyTextStyle}" Text="{svc:Tr 'Game language'}" VerticalAlignment="Center" Width="150"/>
                         <ComboBox Grid.Column="1"
                                   ItemsSource="{Binding LanguageLabels}"
                                   SelectedIndex="{Binding LanguageIndex}"
@@ -76,45 +77,45 @@
             <!-- Runtime Options -->
             <Border Style="{StaticResource CardStyle}" Margin="0,0,0,20">
                 <StackPanel>
-                    <TextBlock Text="Runtime Options" Style="{StaticResource SectionHeaderStyle}"/>
+                    <TextBlock Text="{svc:Tr 'Runtime Options'}" Style="{StaticResource SectionHeaderStyle}"/>
 
                     <StackPanel Margin="0,10,0,0">
-                        <CheckBox Content="Hang Watchdog (record diagnostics on freeze)"
+                        <CheckBox Content="{svc:Tr 'Hang Watchdog (record diagnostics on freeze)'}"
                                   IsChecked="{Binding HangWatchdog}"
                                   Style="{StaticResource ModernCheckBoxStyle}"/>
                         <TextBlock Text="{Binding HangWatchdogNote}" Style="{StaticResource MutedTextStyle}" Margin="28,4,0,10" TextWrapping="Wrap"/>
 
-                        <CheckBox Content="Persistent Shader Cache (eliminates compile hitches)"
+                        <CheckBox Content="{svc:Tr 'Persistent Shader Cache (eliminates compile hitches)'}"
                                   IsChecked="{Binding ShaderCache}"
                                   Style="{StaticResource ModernCheckBoxStyle}"/>
                         <TextBlock Text="{Binding ShaderCacheNote}" Style="{StaticResource MutedTextStyle}" Margin="28,4,0,10" TextWrapping="Wrap"/>
 
-                        <CheckBox Content="Draw Prep Tuning (reduces CP spin with background apps)"
+                        <CheckBox Content="{svc:Tr 'Draw Prep Tuning (reduces CP spin with background apps)'}"
                                   IsChecked="{Binding DrawPrepTuning}"
                                   Style="{StaticResource ModernCheckBoxStyle}"/>
                         <TextBlock Text="{Binding DrawPrepNote}" Style="{StaticResource MutedTextStyle}" Margin="28,4,0,10" TextWrapping="Wrap"/>
 
-                        <CheckBox Content="Motion Controls (accelerometer/gyroscope)"
+                        <CheckBox Content="{svc:Tr 'Motion Controls (accelerometer/gyroscope)'}"
                                   IsChecked="{Binding MotionControls}"
                                   Style="{StaticResource ModernCheckBoxStyle}"/>
                         <TextBlock Text="{Binding MotionNote}" Style="{StaticResource MutedTextStyle}" Margin="28,4,0,10" TextWrapping="Wrap"/>
 
-                        <CheckBox Content="Trigger State (DualSense adaptive triggers)"
+                        <CheckBox Content="{svc:Tr 'Trigger State (DualSense adaptive triggers)'}"
                                   IsChecked="{Binding TriggerState}"
                                   Style="{StaticResource ModernCheckBoxStyle}"/>
                         <TextBlock Text="{Binding TriggerNote2}" Style="{StaticResource MutedTextStyle}" Margin="28,4,0,10" TextWrapping="Wrap"/>
 
-                        <CheckBox Content="DualSense Wireless Speaker (Bluetooth HID audio)"
+                        <CheckBox Content="{svc:Tr 'DualSense Wireless Speaker (Bluetooth HID audio)'}"
                                   IsChecked="{Binding DualSenseWirelessSpeaker}"
                                   Style="{StaticResource ModernCheckBoxStyle}"/>
                         <TextBlock Text="{Binding DualSenseWirelessSpeakerNote}" Style="{StaticResource MutedTextStyle}" Margin="28,4,0,10" TextWrapping="Wrap"/>
 
-                        <CheckBox Content="DualSense Wireless Haptics (Bluetooth HID haptics)"
+                        <CheckBox Content="{svc:Tr 'DualSense Wireless Haptics (Bluetooth HID haptics)'}"
                                   IsChecked="{Binding DualSenseWirelessHaptics}"
                                   Style="{StaticResource ModernCheckBoxStyle}"/>
                         <TextBlock Text="{Binding DualSenseWirelessHapticsNote}" Style="{StaticResource MutedTextStyle}" Margin="28,4,0,10" TextWrapping="Wrap"/>
 
-                        <CheckBox Content="Skip Intro Videos (-skipIntro)"
+                        <CheckBox Content="{svc:Tr 'Skip Intro Videos (-skipIntro)'}"
                                   IsChecked="{Binding SkipIntro}"
                                   Style="{StaticResource ModernCheckBoxStyle}"/>
                         <TextBlock Text="{Binding SkipIntroNote}" Style="{StaticResource MutedTextStyle}" Margin="28,4,0,10" TextWrapping="Wrap"/>
@@ -125,7 +126,7 @@
             <!-- Priority Settings -->
             <Border Style="{StaticResource CardStyle}" Margin="0,0,0,20">
                 <StackPanel>
-                    <TextBlock Text="Process Priority" Style="{StaticResource SectionHeaderStyle}"/>
+                    <TextBlock Text="{svc:Tr 'Process Priority'}" Style="{StaticResource SectionHeaderStyle}"/>
 
                     <StackPanel Margin="0,10,0,0">
                         <Grid Margin="0,0,0,10">
@@ -133,7 +134,7 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Style="{StaticResource BodyTextStyle}" Text="Process Priority" VerticalAlignment="Center" Width="150"/>
+                            <TextBlock Grid.Column="0" Style="{StaticResource BodyTextStyle}" Text="{svc:Tr 'Process Priority'}" VerticalAlignment="Center" Width="150"/>
                             <ComboBox Grid.Column="1"
                                       ItemsSource="{Binding PriorityOptions}"
                                       SelectedItem="{Binding Priority}"
@@ -145,7 +146,7 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Style="{StaticResource BodyTextStyle}" Text="Command Processor Priority" VerticalAlignment="Center" Width="200"/>
+                            <TextBlock Grid.Column="0" Style="{StaticResource BodyTextStyle}" Text="{svc:Tr 'Command Processor Priority'}" VerticalAlignment="Center" Width="200"/>
                             <ComboBox Grid.Column="1"
                                       ItemsSource="{Binding CpPriorityOptions}"
                                       SelectedItem="{Binding CpPriority}"
@@ -160,7 +161,7 @@
             <!-- CUDA/Frame Gen Options -->
             <Border Style="{StaticResource CardStyle}" Margin="0,0,0,20">
                 <StackPanel>
-                    <TextBlock Text="NVIDIA Frame Generation" Style="{StaticResource SectionHeaderStyle}"/>
+                    <TextBlock Text="{svc:Tr 'NVIDIA Frame Generation'}" Style="{StaticResource SectionHeaderStyle}"/>
 
                 </StackPanel>
             </Border>
@@ -173,7 +174,7 @@
                         <StackPanel Margin="0,10,0,0">
                             <TextBlock Text="{Binding ExperimentalWarning}" Style="{StaticResource ErrorTextStyle}" TextWrapping="Wrap" Margin="0,0,0,15"/>
 
-                            <TextBlock Text="Additional experimental options will be added here as they are validated." Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap"/>
+                            <TextBlock Text="{svc:Tr 'Additional experimental options will be added here as they are validated.'}" Style="{StaticResource MutedTextStyle}" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Expander>
                 </StackPanel>

@@ -20,7 +20,7 @@ namespace AstroHybrid.App.ViewModels
         private GameInfo? _gameInfo;
         private bool _isValidating;
         private bool _isInstalling;
-        private string _statusMessage = "Welcome to AstroHybrid Setup";
+        private string _statusMessage = Loc.T("Welcome to AstroHybrid Setup");
         private int _progressPercent;
         private SetupStep? _currentStep;
         private bool _canProceed;
@@ -131,7 +131,7 @@ namespace AstroHybrid.App.ViewModels
         {
             var dialog = new System.Windows.Forms.FolderBrowserDialog
             {
-                Description = "Select your Astro Bot PS5 game dump folder (containing eboot.bin)",
+                Description = Loc.T("Select your Astro Bot PS5 game dump folder (containing eboot.bin)"),
                 ShowNewFolderButton = false
             };
 
@@ -150,7 +150,7 @@ namespace AstroHybrid.App.ViewModels
             IsValidating = true;
             ShowError = false;
             ValidationError = "";
-            StatusMessage = "Validating game dump...";
+            StatusMessage = Loc.T("Validating game dump...");
             ProgressPercent = 10;
             CanProceed = false;
 
@@ -161,14 +161,14 @@ namespace AstroHybrid.App.ViewModels
 
                 if (info.IsValid)
                 {
-                    StatusMessage = "Game dump validated successfully!";
+                    StatusMessage = Loc.T("Game dump validated successfully!");
                     ProgressPercent = 100;
                     CanProceed = true;
                 }
                 else
                 {
-                    StatusMessage = "Validation failed";
-                    ValidationError = info.ValidationError ?? "Unknown error";
+                    StatusMessage = Loc.T("Validation failed");
+                    ValidationError = info.ValidationError ?? Loc.T("Unknown error");
                     ShowError = true;
                     ProgressPercent = 0;
                 }
@@ -177,7 +177,7 @@ namespace AstroHybrid.App.ViewModels
             {
                 ValidationError = $"Validation error: {ex.Message}";
                 ShowError = true;
-                StatusMessage = "Validation error";
+                StatusMessage = Loc.T("Validation error");
                 ProgressPercent = 0;
             }
             finally
@@ -232,14 +232,14 @@ namespace AstroHybrid.App.ViewModels
                 }
                 else
                 {
-                    StatusMessage = "Installation failed";
+                    StatusMessage = Loc.T("Installation failed");
                 }
             }
             catch (Exception ex)
             {
                 ValidationError = $"Installation error: {ex.Message}";
                 ShowError = true;
-                StatusMessage = "Installation error";
+                StatusMessage = Loc.T("Installation error");
             }
             finally
             {

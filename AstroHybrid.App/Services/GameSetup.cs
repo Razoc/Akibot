@@ -102,7 +102,7 @@ namespace AstroHybrid.App.Services
         {
             void Report(int percent, string message) => progress?.Report((percent, message));
             if (!IsReleaseLayout)
-                throw new InvalidOperationException("The runtime files are missing (tools\\relinker.exe or Build\\RunHybrid\\kyty_gpu.dll). Extract the whole download again.");
+                throw new InvalidOperationException(Loc.T("The runtime files are missing (tools\\relinker.exe or Build\\RunHybrid\\kyty_gpu.dll). Extract the whole download again."));
 
             var (titleId, version) = ReadParam(dump);
             var features = new GameFeatures { TitleId = titleId, Version = version, SetupAt = DateTime.Now };
@@ -111,7 +111,7 @@ namespace AstroHybrid.App.Services
             void Log(string line) => File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {line}\r\n");
             Log($"setup from {dump}: {titleId} {version}");
 
-            Report(5, "Linking the game folder (nothing is copied into or changed in your dump)...");
+            Report(5, Loc.T("Linking the game folder (nothing is copied into or changed in your dump)..."));
             BuildApp0(dump, Path.Combine(_runHybrid, "app0"), Log);
 
             var work = Path.Combine(_root, "Build", "work");
@@ -119,7 +119,7 @@ namespace AstroHybrid.App.Services
             Directory.CreateDirectory(Path.Combine(work, "sce_module"));
             try
             {
-                Report(15, "Unwrapping the game code (eboot.bin)...");
+                Report(15, Loc.T("Unwrapping the game code (eboot.bin)..."));
                 SelfUnwrapper.Unwrap(Path.Combine(dump, "eboot.bin"), Path.Combine(work, "eboot.elf"));
                 foreach (var module in OriginalModules(dump))
                 {
@@ -127,7 +127,7 @@ namespace AstroHybrid.App.Services
                     SelfUnwrapper.Unwrap(module, Path.Combine(work, "sce_module", Path.GetFileName(module)));
                 }
 
-                Report(35, "Converting the game code to a Windows program (about a minute)...");
+                Report(35, Loc.T("Converting the game code to a Windows program (about a minute)..."));
                 var exe = Path.Combine(_runHybrid, "AstroBot.exe");
                 foreach (var old in Directory.GetFiles(_runHybrid, "AstroBot*.exe").Concat(Directory.GetFiles(_runHybrid, "AstroBot*.json")))
                     File.Delete(old);
@@ -148,7 +148,7 @@ namespace AstroHybrid.App.Services
                 DeleteTree(work);
             }
 
-            Report(80, "Applying the faster-lighting patch...");
+            Report(80, Loc.T("Applying the faster-lighting patch..."));
             var baseBytes = File.ReadAllBytes(Path.Combine(_runHybrid, "AstroBot.exe"));
             bool clothPatched = ApplyClothPhysicsPatches(baseBytes, Log);
             bool cmdbufPatched = ApplyCommandBufferPatches(baseBytes, Log);
@@ -186,7 +186,7 @@ namespace AstroHybrid.App.Services
                 JsonSerializer.Serialize(features, new JsonSerializerOptions { WriteIndented = true }));
             InstallationManager.SaveManifest(_root,
                 InstallationManager.CreateManifest(_root, dump, version, titleId, features.SetupAt));
-            Report(100, "Done.");
+            Report(100, Loc.T("Done."));
             return features;
         }
 

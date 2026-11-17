@@ -15,8 +15,8 @@ namespace AstroHybrid.App.Services
 {
     public class UpdateService
     {
-        private const string GitHubApiUrl = "https://api.github.com/repos/imnotsharingmyname/pcportastrobot/releases";
-        private const string GitHubRepoUrl = "https://github.com/imnotsharingmyname/pcportastrobot";
+        private static readonly string GitHubApiUrl = AkibotInfo.LatestReleaseApi.Replace("/latest", "");
+        private static readonly string GitHubRepoUrl = AkibotInfo.RepoUrl;
         private const string UserAgent = "AstroHybrid-Launcher";
 
         private readonly string _rootDirectory;

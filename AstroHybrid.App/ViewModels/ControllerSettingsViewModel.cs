@@ -15,7 +15,7 @@ namespace AstroHybrid.App.ViewModels
             _mainViewModel.PropertyChanged += (sender, e) => OnPropertyChanged(string.Empty);
         }
 
-        public string[] ControllerLabels => new[] { "Auto - the controller you press (recommended)", "PlayStation (DualSense, DualShock 4)", "Xbox", "Switch Pro (and compatible pads)", "Other / generic" };
+        public string[] ControllerLabels => new[] { Loc.T("Auto - the controller you press (recommended)"), Loc.T("PlayStation (DualSense, DualShock 4)"), "Xbox", Loc.T("Switch Pro (and compatible pads)"), Loc.T("Other / generic") };
 
         public int ControllerIndex
         {
@@ -31,7 +31,7 @@ namespace AstroHybrid.App.ViewModels
             }
         }
 
-        public string[] RumbleLabels => new[] { "Off", "Almost off (5%)", "Minimal (10%)", "Very light (20%)", "Light (40%)", "Medium (70%, recommended)", "Full (100%)", "Strong (150%)", "Custom..." };
+        public string[] RumbleLabels => new[] { Loc.T("Off"), Loc.T("Almost off (5%)"), Loc.T("Minimal (10%)"), Loc.T("Very light (20%)"), Loc.T("Light (40%)"), Loc.T("Medium (70%, recommended)"), Loc.T("Full (100%)"), Loc.T("Strong (150%)"), Loc.T("Custom...") };
 
         // Percent behind every label; -1 is the "Custom" row, which uses the number box.
         static readonly int[] RumblePresets = { 0, 5, 10, 20, 40, 70, 100, 150, -1 };
@@ -98,7 +98,7 @@ namespace AstroHybrid.App.ViewModels
         public string VibrationNote => "Vibration sets Xbox, Switch and other pads; a DualSense keeps its own haptics. " +
                                       "Pick Custom to type any strength from 0 to 200%. A very light setting can be too weak for a third-party Switch-style pad, which then needs 'Stronger vibration' or a higher strength.";
 
-        public string TriggerNote => "DualSense adaptive triggers are supported. Trigger effect state is sent to the game so L2/R2 work correctly.";
+        public string TriggerNote => Loc.T("DualSense adaptive triggers are supported. Trigger effect state is sent to the game so L2/R2 work correctly.");
 
         public bool DualSenseWirelessSpeaker
         {
@@ -134,7 +134,7 @@ namespace AstroHybrid.App.ViewModels
 
         public string RecommendedController => _mainViewModel.Controllers.Count > 0
             ? _mainViewModel.Controllers[0].Type
-            : "None detected";
+            : Loc.T("None detected");
 
         public void RefreshControllers() => _mainViewModel.RefreshControllersCommand.Execute(null);
     }

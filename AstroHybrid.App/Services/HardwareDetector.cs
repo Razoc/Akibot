@@ -318,13 +318,13 @@ namespace AstroHybrid.App.Services
             parts.Add($"{info.ScreenWidth}x{info.ScreenHeight} @ {info.RefreshRate} Hz");
 
             if (info.RtxSeries >= 50)
-                parts.Add("DLSS + Multi Frame Gen (up to 4x) + Reflex");
+                parts.Add(Loc.T("DLSS + Multi Frame Gen (up to 4x) + Reflex"));
             else if (info.RtxSeries >= 40)
-                parts.Add("DLSS + Frame Gen (2x) + Reflex");
+                parts.Add(Loc.T("DLSS + Frame Gen (2x) + Reflex"));
             else if (info.RtxSeries >= 20)
-                parts.Add("DLSS + Reflex (no Frame Gen)");
+                parts.Add(Loc.T("DLSS + Reflex (no Frame Gen)"));
             else
-                parts.Add("Game's own upscaling (no NVIDIA features)");
+                parts.Add(Loc.T("Game's own upscaling (no NVIDIA features)"));
 
             return string.Join(", ", parts);
         }
