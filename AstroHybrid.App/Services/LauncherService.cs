@@ -344,6 +344,14 @@ namespace AstroHybrid.App.Services
             env["KYTY_BUFFER_RANGE_FIXES"] = "1";
             env["APS5_SAVEDATA_TRANSFER_FALLBACK"] = "1";
 
+            // Akibot: on game versions other than the tested 01.019.000 (PPSA21564 01.007.000 confirmed), the
+            // guest write watch corrupts what the background loader reads at the end of the Crash Site tutorial:
+            // black screen or OdxAsyncLoader access violation (#54 family). Turning it off lets the game go on.
+            // An APS5_NO_WRITE_WATCH already set in the environment (0 or 1) wins.
+            bool untestedVersion = features != null && !string.IsNullOrEmpty(features.Version) && features.Version != GameFeatures.TestedVersion;
+            if (untestedVersion && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("APS5_NO_WRITE_WATCH")))
+                env["APS5_NO_WRITE_WATCH"] = "1";
+
             return env;
         }
 

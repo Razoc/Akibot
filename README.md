@@ -11,7 +11,7 @@ travaillant sur la couche de traduction (CPU et GPU), jamais sur le jeu lui-mêm
 
 ## État actuel
 
-Version **0.1.0** : nouveau lanceur Akibot (installation en un exe, français/anglais, mises à jour auto). Le moteur
+Version **0.1.1** : nouveau lanceur Akibot (installation en un exe, français/anglais, mises à jour auto). Le moteur
 est pour l'instant **identique à AstroHybrid 1.2.1**. Les optimisations Akibot arriveront ici au fur
 et à mesure, avec des mesures avant/après.
 
@@ -31,6 +31,8 @@ et à mesure, avec des mesures avant/après.
 |---|---|
 | Validation et setup du dump | ✅ accepté, `AstroBot.exe` construit sans erreur |
 | Lancement | ✅ démarre, image correcte, 60 FPS dans l'intro |
+| Fin du tutoriel (passage vers l'espace) | ✅ depuis Akibot 0.1.1 (surveillance des écritures mémoire coupée automatiquement ; avant : écran noir ou plantage) |
+| Manette sans gyroscope (Xbox) | ✅ View/Back puis stick droit pour incliner |
 | Vitesse temps réel | ✅ |
 | Ultrawide 21:9 / 32:9 | ✅ |
 | Correctifs du command buffer | ✅ |
