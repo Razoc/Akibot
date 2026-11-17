@@ -14,7 +14,10 @@ namespace AstroHybrid.App.Views
             InitializeComponent();
             var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
             if (version != null)
+            {
                 Title = $"Akibot v{version.Major}.{version.Minor}.{version.Build}";
+                VersionText.Text = $"v{version.Major}.{version.Minor}.{version.Build}";
+            }
         }
     }
 

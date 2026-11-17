@@ -177,7 +177,7 @@ namespace AstroHybrid.App.ViewModels
         public bool IsVSyncAvailable => _mainViewModel.Settings.FrameGenMode == 0;
         public string VSyncNote => IsVSyncAvailable
             ? Loc.T("Locks presentation to your screen's refresh (no tearing).")
-            : "Not available with frame generation: NVIDIA frame generation can't use VSync with Vulkan. For no tearing, use a G-Sync / FreeSync screen (with G-Sync on, keep the on-screen target below its refresh rate), or turn frame generation off and tick VSync.";
+            : Loc.T("UI.VSyncNoFg");
 
         // VSync
         public bool VSync
@@ -198,7 +198,7 @@ namespace AstroHybrid.App.ViewModels
         public bool IsFpsLimitEnabled => _mainViewModel.Settings.FrameGenMode == 0;
         public string FpsLimitNote => IsFpsLimitEnabled
             ? Loc.T("The game may run below the selected limit in demanding scenes.")
-            : "Frame generation is on: the game's own limit comes from the frame generation target below (60 on screen = game at 30 x2). Turn frame generation off to use this limit.";
+            : Loc.T("UI.FpsLimitFg");
 
         // FPS Limiter
         public string[] FpsLabels => new[] { Loc.T("30 FPS - steady (recommended)"), "35 FPS", "45 FPS", "50 FPS", "55 FPS", "60 FPS", Loc.T("No limit") };
@@ -323,7 +323,7 @@ namespace AstroHybrid.App.ViewModels
             get
             {
                 if (FrameGenIndex == 0)
-                    return "Frame generation multiplies the frames you see (30 FPS limit x2 = 60 on screen) and turns Reflex on itself. It runs only while the game window is focused. Do not also use NVIDIA Smooth Motion.";
+                    return Loc.T("UI.FgOff");
 
                 var targetValues = new[] { 0, 50, 60, 90, 120, 144, 165 };
                 int goal = FrameGenTargetIndex >= 0 && FrameGenTargetIndex < targetValues.Length ? targetValues[FrameGenTargetIndex] : 60;
@@ -332,16 +332,16 @@ namespace AstroHybrid.App.ViewModels
                 if (FrameGenIndex == 1 && goal != 0)
                 {
                     int limit = Math.Max(30, goal / 2);
-                    return $"Game up to {limit} FPS; x2 to x4 picked in game to stay at {goal}+ FPS on screen";
+                    return Loc.T("UI.FgAuto", limit, goal);
                 }
                 else if (goal == 0)
                 {
-                    return $"Game unlocked, x{mult} on screen (e.g. 30 -> {30 * mult})";
+                    return Loc.T("UI.FgUnlocked", mult, 30 * mult);
                 }
                 else
                 {
                     int limit = Math.Max(30, goal / mult);
-                    return $"Game up to {limit} FPS x{mult} = {limit * mult} on screen";
+                    return Loc.T("UI.FgFixed", limit, mult, limit * mult);
                 }
             }
         }

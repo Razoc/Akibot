@@ -11,7 +11,7 @@ travaillant sur la couche de traduction (CPU et GPU), jamais sur le jeu lui-mêm
 
 ## État actuel
 
-Version **0.1.1** : nouveau lanceur Akibot (installation en un exe, français/anglais, mises à jour auto). Le moteur
+Version **0.2.0** : lanceur Akibot refait (fenêtre 1280×720 épurée, installation en un exe, français/anglais, mises à jour auto). Le moteur
 est pour l'instant **identique à AstroHybrid 1.2.1**. Les optimisations Akibot arriveront ici au fur
 et à mesure, avec des mesures avant/après.
 

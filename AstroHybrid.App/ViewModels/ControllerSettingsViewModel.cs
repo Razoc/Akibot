@@ -15,6 +15,41 @@ namespace AstroHybrid.App.ViewModels
             _mainViewModel.PropertyChanged += (sender, e) => OnPropertyChanged(string.Empty);
         }
 
+        // Only real game controllers (the detector also lists every generic HID device: mice, keyboards...).
+        static readonly string[] PadTypes = { "DualSense", "DualShock 4", "Switch Pro", "Xbox" };
+        public ControllerInfo[] DetectedPads => System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Where(
+            _mainViewModel.Controllers, c => c.IsConnected && Array.IndexOf(PadTypes, c.Type) >= 0));
+        public bool NoPadDetected => DetectedPads.Length == 0;
+
+        // Moved here from the Advanced page (Akibot 0.2): every controller option lives on one page.
+        public bool MotionControls
+        {
+            get => _mainViewModel.Settings.MotionControls;
+            set
+            {
+                if (_mainViewModel.Settings.MotionControls != value)
+                {
+                    _mainViewModel.Settings.MotionControls = value;
+                    OnPropertyChanged();
+                    _mainViewModel.OnPropertyChanged(nameof(MainWindowViewModel.Settings));
+                }
+            }
+        }
+
+        public bool TriggerState
+        {
+            get => _mainViewModel.Settings.TriggerState;
+            set
+            {
+                if (_mainViewModel.Settings.TriggerState != value)
+                {
+                    _mainViewModel.Settings.TriggerState = value;
+                    OnPropertyChanged();
+                    _mainViewModel.OnPropertyChanged(nameof(MainWindowViewModel.Settings));
+                }
+            }
+        }
+
         public string[] ControllerLabels => new[] { Loc.T("Auto - the controller you press (recommended)"), Loc.T("PlayStation (DualSense, DualShock 4)"), "Xbox", Loc.T("Switch Pro (and compatible pads)"), Loc.T("Other / generic") };
 
         public int ControllerIndex

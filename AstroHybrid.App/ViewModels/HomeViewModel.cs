@@ -86,7 +86,7 @@ namespace AstroHybrid.App.ViewModels
             if (_mainViewModel.Settings.LowLatency)
                 parts.Add(Loc.T("Reflex"));
 
-            return string.Join(" | ", parts);
+            return string.Join("  ·  ", parts);
         }
     }
 }
