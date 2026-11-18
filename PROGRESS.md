@@ -1,5 +1,7 @@
 # Progress — Astro Bot (PPSA21567 v01.019.000) on Windows
 
+> Journal de progression hérité du projet amont (en anglais). L'état actuel d'AkiBot est dans le [README](README.md).
+
 Approach: **native relinking, no CPU emulation.** The PS5 runs x86-64 (Zen 2), so the game's own code
 runs directly on the Ryzen 5 5500. [AnyPS5](https://github.com/boykopovar/AnyPS5) (GPL-2.0, rev `2199ee0`)
 converts the PS5 ELF into a Windows PE and supplies reimplemented PS5 system libraries (`libs/*.prx`,

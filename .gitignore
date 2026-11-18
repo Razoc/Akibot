@@ -1,3 +1,4 @@
+# AkiBot : fichiers à ne jamais commiter
 # Game files are copyrighted and huge: never commit
 /Game/
 /Analysis/elf/
