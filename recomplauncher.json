@@ -1,0 +1,150 @@
+{
+  "$schema": "https://recomplauncher.com/schema/recomplauncher.json",
+  "format": 1,
+  "name": "AkiBot",
+  "repo": "Razoc/AkiBot",
+  "game": {
+    "kind": "folder",
+    "label": "Ton dump PS5 décrypté d'Astro Bot (PPSA…) : le dossier qui contient eboot.bin, sce_module et sce_sys. Il n'est jamais modifié.",
+    "check": { "file": "eboot.bin" }
+  },
+  "prepare": {
+    "program": ["AkiBot.exe"],
+    "args": ["--prepare", "{game}"],
+    "label": "Runtime AkiBot (192 Mo) et conversion du jeu depuis ton dump",
+    "timeout": 1800,
+    "version": "0.3.0",
+    "done": ["{install}/Build/RunHybrid/AstroBot.exe", "{install}/Build/RunHybrid/kyty_gpu.dll"]
+  },
+  "start": {
+    "program": ["AkiBot.exe"],
+    "args": ["--play"]
+  },
+  "config": [
+    {
+      "id": "main",
+      "format": "json",
+      "file": [{ "path": "{install}/Build/akibot-settings.json" }],
+      "game_path": "gameDumpPath"
+    }
+  ],
+  "saves": [
+    "{install}/Build/RunHybrid/_sd",
+    "{install}/Build/RunHybrid/_sd_mem",
+    "{install}/Build/RunHybrid/_trophy",
+    "{install}/Build/akibot-settings.json"
+  ],
+  "folders": {
+    "saves": [{ "path": "{install}/Build/RunHybrid/_sd_mem" }],
+    "logs": [{ "path": "{install}/Logs" }],
+    "game": [{ "path": "{install}/Build/RunHybrid" }]
+  },
+  "looks": {
+    "allowed": false,
+    "reason": "Le jeu tourne dans un second programme (Build\\RunHybrid\\AstroBot.exe) lancé par AkiBot : les filtres ReShade ne l'atteignent pas."
+  },
+  "settings": [
+    {
+      "id": "upscale", "label": "Mise à l'échelle", "group": "Image",
+      "help": "DLSS demande une carte NVIDIA RTX. FSR marche sur toutes les cartes.",
+      "choices": [
+        { "label": "Celle du jeu", "set": { "upscale": "0" } },
+        { "label": "DLSS Qualité", "set": { "upscale": "1" } },
+        { "label": "DLSS Équilibré", "set": { "upscale": "2" } },
+        { "label": "DLSS Performance", "set": { "upscale": "3" } },
+        { "label": "DLSS Ultra Performance", "set": { "upscale": "4" } },
+        { "label": "DLAA", "set": { "upscale": "5" } },
+        { "label": "AMD FSR 3.1", "set": { "upscale": "6" } }
+      ],
+      "defaults": { "upscale": "0" }
+    },
+    {
+      "id": "framegen", "label": "Génération d'images", "group": "Image",
+      "help": "Ajoute des images calculées entre celles du jeu. NVIDIA : carte RTX 40 ou 50. AMD FSR 3 : toutes les cartes.",
+      "choices": [
+        { "label": "Non", "set": { "fgmode": "0" } },
+        { "label": "NVIDIA auto", "set": { "fgmode": "1" } },
+        { "label": "NVIDIA ×2", "set": { "fgmode": "2" } },
+        { "label": "NVIDIA ×3", "set": { "fgmode": "3" } },
+        { "label": "NVIDIA ×4", "set": { "fgmode": "4" } },
+        { "label": "AMD FSR 3 ×2", "set": { "fgmode": "5" } }
+      ],
+      "defaults": { "fgmode": "0" }
+    },
+    {
+      "id": "fgtarget", "label": "Objectif à l'écran", "group": "Image",
+      "help": "Les FPS visés avec la génération d'images. Le jeu est limité à cet objectif divisé par le multiplicateur.",
+      "choices": [
+        { "label": "Sans limite", "set": { "fgtarget": "0" } },
+        { "label": "50 FPS", "set": { "fgtarget": "1" } },
+        { "label": "60 FPS", "set": { "fgtarget": "2" } },
+        { "label": "90 FPS", "set": { "fgtarget": "3" } },
+        { "label": "120 FPS", "set": { "fgtarget": "4" } },
+        { "label": "144 FPS", "set": { "fgtarget": "5" } },
+        { "label": "165 FPS", "set": { "fgtarget": "6" } }
+      ],
+      "defaults": { "fgtarget": "2" }
+    },
+    {
+      "id": "fps", "label": "Limite de FPS", "group": "Image",
+      "help": "Sans génération d'images. 30 est le plus régulier ; le jeu tourne à vitesse réelle à toutes les limites.",
+      "choices": [
+        { "label": "30", "set": { "fps": "0" } },
+        { "label": "35", "set": { "fps": "1" } },
+        { "label": "45", "set": { "fps": "2" } },
+        { "label": "50", "set": { "fps": "3" } },
+        { "label": "55", "set": { "fps": "4" } },
+        { "label": "60", "set": { "fps": "5" } },
+        { "label": "Sans limite", "set": { "fps": "6" } }
+      ],
+      "defaults": { "fps": "0" },
+      "when": { "fgmode": "0" }
+    },
+    {
+      "id": "vsync", "label": "V-Sync", "group": "Image",
+      "help": "Supprime les déchirures de l'image, sans génération d'images.",
+      "choices": [
+        { "label": "Non", "set": { "vsync": "false" } },
+        { "label": "Oui", "set": { "vsync": "true" } }
+      ],
+      "defaults": { "vsync": "false" },
+      "when": { "fgmode": "0" }
+    },
+    {
+      "id": "window", "label": "Fenêtre", "group": "Écran",
+      "help": "Plein écran ou fenêtré. En mode Big Picture, le jeu s'ouvre toujours en plein écran.",
+      "choices": [
+        { "label": "Plein écran", "set": { "fullscreen": "true" } },
+        { "label": "Fenêtré", "set": { "fullscreen": "false" } }
+      ],
+      "defaults": { "fullscreen": "true" }
+    },
+    {
+      "id": "size", "label": "Résolution", "group": "Écran",
+      "help": "La taille de l'image du jeu.",
+      "choices": [
+        { "label": "1280 × 720", "set": { "size": "0" } },
+        { "label": "1600 × 900", "set": { "size": "1" } },
+        { "label": "1920 × 1080", "set": { "size": "2" } },
+        { "label": "2560 × 1440", "set": { "size": "3" } },
+        { "label": "2560 × 1080 (21:9)", "set": { "size": "4" } },
+        { "label": "3440 × 1440 (21:9)", "set": { "size": "5" } }
+      ],
+      "defaults": { "size": "2" }
+    },
+    {
+      "id": "overlay", "label": "Compteur de FPS", "group": "Écran",
+      "help": "Les FPS en haut à droite du jeu, images générées comprises.",
+      "choices": [
+        { "label": "Non", "set": { "overlay": "0" } },
+        { "label": "Oui", "set": { "overlay": "1" } }
+      ],
+      "defaults": { "overlay": "0" }
+    }
+  ],
+  "actions": [
+    { "id": "logs", "label": "Journaux", "help": "Les journaux d'AkiBot et du jeu, à joindre à un rapport de bug.", "open": "logs" },
+    { "id": "saves", "label": "Sauvegardes", "help": "Ta progression dans Astro Bot.", "open": "saves" },
+    { "id": "cache", "label": "Cache des shaders", "help": "Les shaders déjà construits, pour moins de saccades. À vider seulement si l'image est abîmée après une mise à jour.", "clear": "game/_PipelineCache" }
+  ]
+}

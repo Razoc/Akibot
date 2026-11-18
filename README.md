@@ -1,5 +1,7 @@
 # AkiBot
 
+<a href="https://recomplauncher.com"><picture><source media="(prefers-color-scheme: dark)" srcset="https://recomplauncher.com/assets/press/launcher/badge-light.svg"><img alt="Get it on RecompLauncher" src="https://recomplauncher.com/assets/press/launcher/badge-dark.svg" height="48"></picture></a>
+
 Fork personnel du [portage PC natif d'**Astro Bot**](https://github.com/imnotsharingmyname/pcportastrobot)
 (PS5) par imnotsharingmyname. Le but d'AkiBot : **plus de FPS, moins de saccades** et des réglages adaptés, en
 travaillant sur la couche de traduction (CPU et GPU), jamais sur le jeu lui-même.
@@ -106,6 +108,13 @@ avertir au premier lancement (exe non signé) : « Informations complémentaires
 Sans fenêtre : `AkiBot.exe --install "<dossier>"`, puis `AkiBot.exe --setup "<dossier du dump>"` depuis le
 dossier d'installation. `AkiBot.exe --play` lance le jeu avec les réglages enregistrés ;
 `AkiBot.exe --run <arguments>` le lance avec ses propres arguments (ex. `-lvl underwater_aerial_garden`).
+
+### Avec RecompLauncher
+
+AkiBot fournit un `recomplauncher.json` dans le zip `AkiBot-v<version>-Windows-x64.zip` de chaque release :
+[RecompLauncher](https://recomplauncher.com) demande ton dossier de dump, installe le runtime et convertit le jeu
+(`AkiBot.exe --prepare "<dossier du dump>"`, sans fenêtre), affiche les réglages graphiques sur la page du jeu,
+puis lance la partie avec `AkiBot.exe --play`. En mode Big Picture, le jeu s'ouvre en plein écran.
 
 > English: download **AkiBot.exe** from the latest release, run it, pick a language and an install folder,
 > then point it at your own Astro Bot dump. AkiBot updates itself.
