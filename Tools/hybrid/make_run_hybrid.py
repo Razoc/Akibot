@@ -1,4 +1,4 @@
-"""Assemble Build\\RunHybrid: AstroBot.exe with Kyty's GPU stack (AstroHybrid, milestone 2).
+"""Assemble Build\\RunHybrid: AstroBot.exe with Kyty's GPU stack (AkiBot, milestone 2).
 
 Build\\Run stays the working AnyPS5 build and is only read. RunHybrid gets:
   AstroBot.exe and its registries        hard links to Build\\Run (same files, no copies)
@@ -7,17 +7,17 @@ Build\\Run stays the working AnyPS5 build and is only read. RunHybrid gets:
                                           APS5_GPU_ENGINE=kyty direct-memory forwarding
   libs\\libSceAgc.prx, libSceAgcDriver.prx, libSceVideoOut.prx
                                           forwarder DLLs: each NID resolves to kyty_gpu.dll, the
-                                          two AnyPS5-internal HDR calls to astrohybrid_host.dll
-  kyty_gpu.dll (+ .pdb)                   E:\\AstroHybrid-Work\\build\\kyty-gpu (exe directory, so
+                                          two AnyPS5-internal HDR calls to akibot_host.dll
+  kyty_gpu.dll (+ .pdb)                   E:\\AkiBot-Work\\build\\kyty-gpu (exe directory, so
                                           the loader finds it when it resolves the forwarders)
-  astrohybrid_host.dll                    AnyPS5's libAstroHybridHost.prx under the name kyty_gpu
+  akibot_host.dll                    AnyPS5's libAkiBotHost.prx under the name kyty_gpu
                                           is told to load (KYTY_GPU_HOST_MODULE)
   app0                                    junction to Game\\PPSA21567-app (read only)
   _sd_mem, _trophy                        copies of Build\\Run's, made once
   AstroBot-NonRT.exe                      AstroBot-NonTiled.exe plus the second change of the Kyty
                                           launcher's Candidate-NonRT game patch (GI probes and
                                           lighting shaders off), checked byte for byte before writing
-  u59-preset.json, u59-preset.cmd         the Kyty engine's environment preset (Jetsku int21)
+  u59-preset.json                         the Kyty engine's environment preset (Jetsku int21)
   _PipelineCache                          copy of Kyty's warm pipeline cache, made once
 
 Usage: python -I Tools/hybrid/make_run_hybrid.py
@@ -34,11 +34,11 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 RUN = ROOT / "Build" / "Run"
 HYBRID = ROOT / "Build" / "RunHybrid"
 BUILT = ROOT / "Build" / "anyps5" / "core" / "libs" / "libs"
-KYTY = pathlib.Path(r"E:\AstroHybrid-Work")
+KYTY = pathlib.Path(r"E:\AkiBot-Work")
 # The PGO + ThinLTO build (Jetsku's int21 recipe) is about 4 fps faster in Sky Garden than the plain one;
-# ASTROHYBRID_KYTY_GPU=plain or a directory picks another build.
+# AKIBOT_KYTY_GPU=plain or a directory picks another build.
 KYTY_GPU_BUILDS = {"pgo": KYTY / "build" / "kyty-gpu-pgo", "plain": KYTY / "build" / "kyty-gpu"}
-_choice = os.environ.get("ASTROHYBRID_KYTY_GPU", "pgo")
+_choice = os.environ.get("AKIBOT_KYTY_GPU", "pgo")
 KYTY_GPU = KYTY_GPU_BUILDS.get(_choice, pathlib.Path(_choice))
 if not (KYTY_GPU / "kyty_gpu.dll").exists() and _choice == "pgo":
     KYTY_GPU = KYTY_GPU_BUILDS["plain"]
@@ -49,7 +49,7 @@ GAME = ROOT / "Game" / "PPSA21567-app"
 SHIMS = ("libSceAgc.prx", "libSceAgcDriver.prx", "libSceVideoOut.prx")
 FRESH = ("libc.prx", "libkernel.prx", "libScePad.prx")
 KYTY_PRESET = pathlib.Path(r"E:\AstroBotPC\.engines\Jetsku-int21\u59-preset.json")
-KYTY_CACHE = KYTY / "runtime" / "astrohybrid" / "_PipelineCache"
+KYTY_CACHE = KYTY / "runtime" / "akibot" / "_PipelineCache"
 # Candidate-NonRT.json (Kyty launcher) patches the original eboot at 0x73B451F and 0x70CE313. The
 # relinked code sits 0x10000 further into AstroBot.exe; AstroBot-NonTiled.exe already has the first.
 NON_RT = (
@@ -69,8 +69,8 @@ SOFT_ASSERT = (
 
 HOST_FORWARDS = {
     "libSceAgcDriver.prx": {
-        "doCCHPPfxkI": "astrohybrid_host.AstroHybridHostHdr_nid_no_patch",
-        "KMphJjTcNgk": "astrohybrid_host.AstroHybridNoteReportedToneMapPeak_nid_no_patch",
+        "doCCHPPfxkI": "akibot_host.AkiBotHostHdr_nid_no_patch",
+        "KMphJjTcNgk": "akibot_host.AkiBotNoteReportedToneMapPeak_nid_no_patch",
     },
 }
 
@@ -91,7 +91,7 @@ def build_shim(library, nids, out):
     work = HYBRID / "_shims"
     work.mkdir(exist_ok=True)
     empty = work / "empty.c"
-    empty.write_text("int astrohybrid_shim;\n", encoding="ascii")
+    empty.write_text("int akibot_shim;\n", encoding="ascii")
     obj = work / "empty.obj"
     subprocess.run([str(LLVM / "clang-cl.exe"), "/nologo", "/c", f"/Fo{obj}", str(empty)], check=True)
     lines = [f"LIBRARY {library}", "EXPORTS"]
@@ -123,7 +123,7 @@ def make_non_rt(source, target, patches=NON_RT):
 def main():
     if not (RUN / "AstroBot.exe").exists():
         sys.exit("Build\\Run\\AstroBot.exe is missing")
-    for required in [KYTY_GPU / "kyty_gpu.dll", BUILT / "libAstroHybridHost.prx", NIDS] + [BUILT / name for name in FRESH]:
+    for required in [KYTY_GPU / "kyty_gpu.dll", BUILT / "libAkiBotHost.prx", NIDS] + [BUILT / name for name in FRESH]:
         if not required.exists():
             sys.exit(f"missing {required}")
     libs = HYBRID / "libs"
@@ -139,7 +139,7 @@ def main():
             linked += 1
     for name in FRESH:
         copy(BUILT / name, libs / name)
-    copy(BUILT / "libAstroHybridHost.prx", HYBRID / "astrohybrid_host.dll")
+    copy(BUILT / "libAkiBotHost.prx", HYBRID / "akibot_host.dll")
     for name in ("kyty_gpu.dll", "kyty_gpu.pdb"):
         if (KYTY_GPU / name).exists():
             copy(KYTY_GPU / name, HYBRID / name)
@@ -158,10 +158,6 @@ def main():
                 link(item, HYBRID / item.name.replace("AstroBot-NonTiled.", "AstroBot-NonRT-SoftAssert."))
     if KYTY_PRESET.exists():
         copy(KYTY_PRESET, HYBRID / "u59-preset.json")
-        preset = __import__("json").loads(KYTY_PRESET.read_text(encoding="utf-8"))
-        lines = ["@rem Kyty engine preset (generated from " + str(KYTY_PRESET) + ")"]
-        lines += [f'if not defined {key} set "{key}={value}"' for key, value in preset.items()]
-        (HYBRID / "u59-preset.cmd").write_text("\r\n".join(lines) + "\r\n", encoding="ascii")
     if KYTY_CACHE.exists() and not (HYBRID / "_PipelineCache").exists():
         shutil.copytree(KYTY_CACHE, HYBRID / "_PipelineCache")
     for name in ("_sd_mem", "_trophy"):

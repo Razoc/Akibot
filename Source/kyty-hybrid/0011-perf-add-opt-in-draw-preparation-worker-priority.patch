@@ -1,7 +1,7 @@
-From 1d12195c82749d5532282ae68dd666be921a3c59 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Sat, 7 Nov 2026 05:18:06 +0000
-Subject: [PATCH 11/35] perf: add opt-in draw preparation worker priority
+Subject: [PATCH 11/42] perf: add opt-in draw preparation worker priority
 
 KYTY_DRAW_PREP_PRIORITY remains 0 by default. With priority 1 and existing hot/cold spin limits 10/5 us, two flanked Sky Garden PGO tests improve average CSV FPS about 4.2% and slowest-one-percent FPS about 12.4%. Deep wait falls below 0.4 ms; total CP gap drops about 1 ms/frame. Priority alone mostly moves wait into idle, so the short spin settings are essential. Loader interface/graphics/lazy checks pass; both enabled screenshots are correct. Root Docs/OVERNIGHT.md records raw runs.
 ---
@@ -62,5 +62,5 @@ index 2d54862b..f02f4cff 100644
  		uint32_t placement_count = 0; // placement samples (common/cpuPlacement.h), every 64th slot
  		t_worker_number = index + 1u;
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

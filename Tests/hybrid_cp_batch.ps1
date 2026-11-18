@@ -82,7 +82,7 @@ try {
             'occlusion' { $e.KYTY_GPU_OCCLUSION='1' }
             'nowatchdog' { $e.KYTY_HANG_WATCHDOG='0' }
             'watchdog' { $e.KYTY_HANG_WATCHDOG='auto' }
-            'fastevents' { $e.ASTROHYBRID_WATCHDOG_FAST_EVENTS='1' }
+            'fastevents' { $e.AKIBOT_WATCHDOG_FAST_EVENTS='1' }
             'gpuends' {
                 $e.KYTY_GPU_OP_COUNTERS='1'
                 $e.KYTY_GPU_OP_PROFILE='90'

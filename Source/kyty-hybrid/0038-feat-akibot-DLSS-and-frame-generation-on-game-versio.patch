@@ -1,0 +1,286 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Razoc <razoc@users.noreply.github.com>
+Date: Tue, 17 Nov 2026 22:48:16 +0100
+Subject: [PATCH 38/42] feat(akibot): DLSS and frame generation on game version
+ 01.007.000
+
+Astro Bot 01.007.000 has another temporal upscale pass (pixel shader
+5a34b303576ee324, layout B) than 01.019.000 (2936e5eca99d75e7), so DLSS
+Super Resolution never replaced it and frame generation never got its
+camera constants ("missing common constants" on every frame).
+
+- ReadPass() reads either layout: B has the output and input sizes at
+  dwords 0-3, the frame at 7, motion vectors used at 9; its images are
+  colour, motion vectors (the G-buffer target, found by its recorded
+  depth attachment) and history.
+- Layout B has no jitter in its constants: it is taken from the game's
+  jittered projection (third column, m[8] and m[9]) seen by
+  NoteFrameGenCamera, which now also runs for DLSS alone.
+- AKIBOT_DLSS_PASS_B overrides the second hash.
+- DLSS presets: AKIBOT_DLSS_QUALITY=ultra (Ultra Performance).
+
+Checked in Sky Garden: DLSS 1920x1080 -> 2432x1368 on every frame,
+picture clean; frame generation 4.00 frames shown per game frame
+(39 game FPS, 156 on screen), tags on every frame.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/graphics/host_gpu/renderer/dlss.cpp       | 115 ++++++++++++++----
+ src/graphics/host_gpu/renderer/dlss.h         |   2 +-
+ src/graphics/host_gpu/renderer/renderDraw.cpp |  11 +-
+ src/graphics/presentation/akibotMenu.cpp      |   4 +-
+ 4 files changed, 104 insertions(+), 28 deletions(-)
+
+diff --git a/src/graphics/host_gpu/renderer/dlss.cpp b/src/graphics/host_gpu/renderer/dlss.cpp
+index af492d43..fe6cff37 100644
+--- a/src/graphics/host_gpu/renderer/dlss.cpp
++++ b/src/graphics/host_gpu/renderer/dlss.cpp
+@@ -200,6 +200,10 @@ struct DepthPair {
+ 
+ struct State {
+ 	uint64_t pass_hash = 0x2936e5eca99d75e7ull;
++	// AkiBot: the same pass in game version 01.007.000 (layout B: sizes at dwords 0-3, frame at 7,
++	// motion vectors used at 9, no jitter in the constants; the jitter comes from the camera).
++	uint64_t pass_hash_b = 0x5a34b303576ee324ull;
++	float    camera_jitter[2] {}; // clip-space offsets from the jittered projection (m[8], m[9])
+ 	float    jitter_sign = 1.0f;
+ 	bool     depth_inverted = false;
+ 	int      quality = 0; // 0 quality, 1 balanced, 2 performance, 3 dlaa
+@@ -225,6 +229,9 @@ State& Get() {
+ 		if (const char* value = std::getenv("AKIBOT_DLSS_PASS"); value != nullptr) {
+ 			s.pass_hash = std::strtoull(value, nullptr, 16);
+ 		}
++		if (const char* value = std::getenv("AKIBOT_DLSS_PASS_B"); value != nullptr) {
++			s.pass_hash_b = std::strtoull(value, nullptr, 16);
++		}
+ 		if (const char* value = std::getenv("AKIBOT_DLSS_JITTER_SIGN"); value != nullptr) {
+ 			s.jitter_sign = std::strtof(value, nullptr) < 0 ? -1.0f : 1.0f;
+ 		}
+@@ -235,6 +242,7 @@ State& Get() {
+ 			s.quality = std::strcmp(value, "balanced") == 0      ? 1
+ 			            : std::strcmp(value, "performance") == 0 ? 2
+ 			            : std::strcmp(value, "dlaa") == 0        ? 3
++			            : std::strcmp(value, "ultra") == 0       ? 4
+ 			                                                     : 0;
+ 		}
+ 		return s;
+@@ -279,10 +287,66 @@ bool Fail(State& s, Fallback reason) {
+ 	return false;
+ }
+ 
++// The game's upscale pass, either layout (dlss.h): sizes, frame, motion-vector and colour images,
++// and the jitter in input pixels. False when this draw is not that pass or its constants are short.
++struct PassInfo {
++	uint32_t in_w = 0, in_h = 0, out_w = 0, out_h = 0, frame = 0;
++	bool     mv_used = false;
++	ImageId  mv {};
++	ImageId  color {};
++	float    jitter_px[2] {};
++};
++
++bool ReadPass(const State& s, const PreparedBindings& pixel, PassInfo& info) {
++	const auto hash = pixel.runtime->program->shader_hash;
++	if ((hash != s.pass_hash && hash != s.pass_hash_b) || pixel.images.size() < 2 ||
++	    pixel.buffer_sources.empty() || pixel.buffer_sources[0].address == 0 ||
++	    pixel.buffer_sources[0].size < 56) {
++		return false;
++	}
++	const auto* cb = reinterpret_cast<const uint32_t*>(pixel.buffer_sources[0].address);
++	if (hash == s.pass_hash) {
++		float jitter_uv[2];
++		std::memcpy(jitter_uv, cb, sizeof(jitter_uv));
++		info.out_w = cb[4], info.out_h = cb[5], info.in_w = cb[6], info.in_h = cb[7], info.frame = cb[11];
++		info.mv_used      = cb[13] != 0;
++		info.mv           = pixel.images[0].image_id;
++		info.color        = pixel.images[1].image_id;
++		info.jitter_px[0] = s.jitter_sign * jitter_uv[0] * static_cast<float>(info.in_w);
++		info.jitter_px[1] = s.jitter_sign * jitter_uv[1] * static_cast<float>(info.in_h);
++		return true;
++	}
++	// Layout B: colour, motion vectors (a G-buffer target, found by its depth attachment) and history.
++	info.out_w = cb[0], info.out_h = cb[1], info.in_w = cb[2], info.in_h = cb[3], info.frame = cb[7];
++	info.mv_used = cb[9] != 0;
++	const auto has_depth = [&](ImageId id) {
++		for (const auto& pair: s.depth_pairs) {
++			if (pair.color == id && pair.depth) {
++				return true;
++			}
++		}
++		return false;
++	};
++	for (size_t i = 0; i < pixel.images.size() && i < 3; ++i) {
++		if (!info.mv && has_depth(pixel.images[i].image_id)) {
++			info.mv = pixel.images[i].image_id;
++		}
++	}
++	for (size_t i = 0; i < pixel.images.size() && i < 2; ++i) {
++		if (pixel.images[i].image_id != info.mv && !info.color) {
++			info.color = pixel.images[i].image_id;
++		}
++	}
++	info.jitter_px[0] = s.jitter_sign * s.camera_jitter[0] * 0.5f * static_cast<float>(info.in_w);
++	info.jitter_px[1] = -s.jitter_sign * s.camera_jitter[1] * 0.5f * static_cast<float>(info.in_h);
++	return static_cast<bool>(info.mv) && static_cast<bool>(info.color);
++}
++
+ } // namespace
+ 
+ void RenderExecutor::NoteFrameGenCamera(const PreparedBindings& stage) {
+-	if (!FrameGen::CameraWanted()) {
++	const bool camera_wanted = FrameGen::CameraWanted();
++	if (!camera_wanted && !Dlss::Requested()) {
+ 		return;
+ 	}
+ 	// The game's per-view constants: a perspective projection (16:9) at offset 128 of a 576-byte
+@@ -297,7 +361,14 @@ void RenderExecutor::NoteFrameGenCamera(const PreparedBindings& stage) {
+ 		    !zero(m[4]) || !zero(m[15]) || std::fabs(std::fabs(m[11]) - 1.0f) > 1e-5f) {
+ 			continue;
+ 		}
+-		FrameGen::SetCamera(m);
++		// The jittered projection carries the sub-pixel offset in its third column (layout B's jitter).
++		if (std::fabs(m[8]) > 1e-7f || std::fabs(m[9]) > 1e-7f) {
++			Get().camera_jitter[0] = m[8];
++			Get().camera_jitter[1] = m[9];
++		}
++		if (camera_wanted) {
++			FrameGen::SetCamera(m);
++		}
+ 		return;
+ 	}
+ }
+@@ -306,18 +377,17 @@ void RenderExecutor::TagFrameGen(CommandBuffer& buffer, PreparedBindings& pixel)
+ 	if (!FrameGen::Active() || pixel.runtime == nullptr || !*pixel.runtime) {
+ 		return;
+ 	}
+-	auto& s = Get();
+-	if (pixel.runtime->program->shader_hash != s.pass_hash || pixel.images.size() < 2 ||
+-	    pixel.buffer_sources.empty() || pixel.buffer_sources[0].address == 0 ||
+-	    pixel.buffer_sources[0].size < 56) {
++	auto&    s = Get();
++	PassInfo pass;
++	if (!ReadPass(s, pixel, pass)) {
+ 		return;
+ 	}
+-	const auto* cb = reinterpret_cast<const uint32_t*>(pixel.buffer_sources[0].address);
+-	float       jitter_uv[2];
+-	std::memcpy(jitter_uv, cb, sizeof(jitter_uv));
+-	const uint32_t in_w = cb[6], in_h = cb[7];
++	const uint32_t in_w = pass.in_w, in_h = pass.in_h;
++	// Frame generation takes the jitter in UV (as layout A's constants hold it).
++	float jitter_uv[2] {pass.jitter_px[0] / (s.jitter_sign * static_cast<float>(std::max(in_w, 1u))),
++	                    pass.jitter_px[1] / (s.jitter_sign * static_cast<float>(std::max(in_h, 1u)))};
+ 	auto&      cache    = m_context.GetTextureCache();
+-	const auto mv_id    = pixel.images[0].image_id;
++	const auto mv_id    = pass.mv;
+ 	ImageId    depth_id {};
+ 	for (const auto& pair: s.depth_pairs) {
+ 		if (pair.color == mv_id) {
+@@ -407,7 +477,8 @@ bool RenderExecutor::TryDlssUpscale(CommandBuffer& buffer, PreparedBindings& pix
+ 		return false;
+ 	}
+ 	auto& s = Get();
+-	if (pixel.runtime->program->shader_hash != s.pass_hash) {
++	const auto hash = pixel.runtime->program->shader_hash;
++	if (hash != s.pass_hash && hash != s.pass_hash_b) {
+ 		return false;
+ 	}
+ #if !KYTY_NGX
+@@ -416,20 +487,17 @@ bool RenderExecutor::TryDlssUpscale(CommandBuffer& buffer, PreparedBindings& pix
+ 	return Fail(s, Fallback::NotBuiltIn);
+ #else
+ 	// The pass's bindings: motion vectors, colour, history; its constants (dlss.h).
+-	if (pixel.images.size() < 2 || !output || pixel.buffer_sources.empty() ||
+-	    pixel.buffer_sources[0].address == 0 || pixel.buffer_sources[0].size < 56) {
++	PassInfo pass;
++	if (!output || !ReadPass(s, pixel, pass)) {
+ 		return Fail(s, Fallback::Bindings);
+ 	}
+-	const auto* cb = reinterpret_cast<const uint32_t*>(pixel.buffer_sources[0].address);
+-	float       jitter_uv[2];
+-	std::memcpy(jitter_uv, cb, sizeof(jitter_uv));
+-	const uint32_t out_w = cb[4], out_h = cb[5], in_w = cb[6], in_h = cb[7], frame = cb[11];
+-	if (cb[13] == 0) {
++	const uint32_t out_w = pass.out_w, out_h = pass.out_h, in_w = pass.in_w, in_h = pass.in_h, frame = pass.frame;
++	if (!pass.mv_used) {
+ 		return Fail(s, Fallback::NoMotionVectors);
+ 	}
+ 	auto&      cache      = m_context.GetTextureCache();
+-	const auto mv_id      = pixel.images[0].image_id;
+-	const auto color_id   = pixel.images[1].image_id;
++	const auto mv_id      = pass.mv;
++	const auto color_id   = pass.color;
+ 	ImageId    depth_id {};
+ 	for (const auto& pair: s.depth_pairs) {
+ 		if (pair.color == mv_id) {
+@@ -511,6 +579,7 @@ bool RenderExecutor::TryDlssUpscale(CommandBuffer& buffer, PreparedBindings& pix
+ 		    s.quality == 1   ? NVSDK_NGX_PerfQuality_Value_Balanced
+ 		    : s.quality == 2 ? NVSDK_NGX_PerfQuality_Value_MaxPerf
+ 		    : s.quality == 3 ? NVSDK_NGX_PerfQuality_Value_DLAA
++		    : s.quality == 4 ? NVSDK_NGX_PerfQuality_Value_UltraPerformance
+ 		                     : NVSDK_NGX_PerfQuality_Value_MaxQuality;
+ 		create.InFeatureCreateFlags = NVSDK_NGX_DLSS_Feature_Flags_IsHDR |
+ 		                              NVSDK_NGX_DLSS_Feature_Flags_MVLowRes |
+@@ -586,8 +655,8 @@ bool RenderExecutor::TryDlssUpscale(CommandBuffer& buffer, PreparedBindings& pix
+ 	eval.pInDepth          = &depth_res;
+ 	eval.pInMotionVectors  = &mv_res;
+ 	// Jitter in input pixels; motion vectors in UV from previous to current (dlss.h).
+-	eval.InJitterOffsetX   = s.jitter_sign * jitter_uv[0] * static_cast<float>(in_w);
+-	eval.InJitterOffsetY   = s.jitter_sign * jitter_uv[1] * static_cast<float>(in_h);
++	eval.InJitterOffsetX   = pass.jitter_px[0];
++	eval.InJitterOffsetY   = pass.jitter_px[1];
+ 	eval.InMVScaleX        = -static_cast<float>(in_w);
+ 	eval.InMVScaleY        = -static_cast<float>(in_h);
+ 	eval.InRenderSubrectDimensions = {in_w, in_h};
+diff --git a/src/graphics/host_gpu/renderer/dlss.h b/src/graphics/host_gpu/renderer/dlss.h
+index b4450427..e7cc1ac7 100644
+--- a/src/graphics/host_gpu/renderer/dlss.h
++++ b/src/graphics/host_gpu/renderer/dlss.h
+@@ -27,7 +27,7 @@
+ // 1 TiB when the device is created. The PS5 guest arena fills that range unless the host leaves
+ // it free: run with AKIBOT_CUDA_HOLE=1 (AnyPS5 libc, 0xDC00000000-0xEC00000000), otherwise
+ // device creation fails with the extension (AKIBOT_DLSS_PROBE=1 reports it).
+-// Options: AKIBOT_DLSS_QUALITY=quality|balanced|performance|dlaa (the DLSS preset family;
++// Options: AKIBOT_DLSS_QUALITY=quality|balanced|performance|ultra|dlaa (the DLSS preset family;
+ // default quality); AKIBOT_DLSS_JITTER_SIGN=1|-1 (default 1); AKIBOT_DLSS_DEPTH_INVERTED=1|0
+ // (default 0: the game's projection maps the near plane to depth 0); AKIBOT_DLSS_PATH: the folder holding nvngx_dlss.dll.
+ // One "DLSS 10s:" console line every 10 s with evaluations and fallbacks by reason.
+diff --git a/src/graphics/host_gpu/renderer/renderDraw.cpp b/src/graphics/host_gpu/renderer/renderDraw.cpp
+index 8b3046fd..0b90429f 100644
+--- a/src/graphics/host_gpu/renderer/renderDraw.cpp
++++ b/src/graphics/host_gpu/renderer/renderDraw.cpp
+@@ -4169,9 +4169,14 @@ void RenderExecutor::ExecutePreparedDraw(uint64_t submit_id, CommandBuffer& buff
+ 	if (Dlss::Requested() || FrameGen::Requested()) [[unlikely]] {
+ 		NoteDlssTargets(std::span<const RenderColorInfo> {state.color_info, state.color_count},
+ 		                state.depth_info.image_id);
+-		if (FrameGen::Active() && state.ps_active && bindings.pixel.has_value()) {
+-			NoteFrameGenCamera(*bindings.pixel);
+-			TagFrameGen(buffer, *bindings.pixel);
++		if (state.ps_active && bindings.pixel.has_value()) {
++			// The camera also gives DLSS its jitter in game version 01.007.000 (dlss.cpp, layout B).
++			if (FrameGen::Active() || Dlss::Requested()) {
++				NoteFrameGenCamera(*bindings.pixel);
++			}
++			if (FrameGen::Active()) {
++				TagFrameGen(buffer, *bindings.pixel);
++			}
+ 		}
+ 		if (Dlss::Requested() && state.ps_active && bindings.pixel.has_value() && state.color_count != 0 &&
+ 		    TryDlssUpscale(buffer, *bindings.pixel, state.color_info[0].image_id)) {
+diff --git a/src/graphics/presentation/akibotMenu.cpp b/src/graphics/presentation/akibotMenu.cpp
+index 0ac7bfbe..47a5d774 100644
+--- a/src/graphics/presentation/akibotMenu.cpp
++++ b/src/graphics/presentation/akibotMenu.cpp
+@@ -77,7 +77,9 @@ const std::vector<Option>& Options() {
+ 	     {{"OFF - éclairage rapide", "OFF - faster lighting"}, {"ON - ray tracing", "ON - ray tracing"}},
+ 	     Live::No, false, 0},
+ 	    {Tab::Graphics, "upscale", Kind::Choice, {"DLSS", "DLSS"},
+-	     {{"Celui du jeu", "Game's own"}, {"NVIDIA DLSS", "NVIDIA DLSS"}}, Live::No, false, 0},
++	     {{"Celui du jeu", "Game's own"}, {"Qualité", "Quality"}, {"Équilibré", "Balanced"},
++	      {"Performance", "Performance"}, {"Ultra Performance", "Ultra Performance"}, {"DLAA", "DLAA"}},
++	     Live::No, false, 0},
+ 	    {Tab::Graphics, "fgmode", Kind::Choice, {"Frame Generation", "Frame Generation"},
+ 	     {{"Désactivée", "Off"}, {"Auto (conseillé)", "Auto (recommended)"}, {"x2", "2x"}, {"x3", "3x"}, {"x4", "4x"}},
+ 	     Live::No, false, 0},
+-- 
+2.56.0.windows.4
+

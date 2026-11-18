@@ -1,21 +1,21 @@
-From cddcfcb16505ae8025d063444a851d61ec686d61 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Sat, 7 Nov 2026 23:46:03 +0000
-Subject: [PATCH 24/26] feat(libScePad): trigger effect state from the game's
+Subject: [PATCH 24/27] feat(libScePad): trigger effect state from the game's
  effect and the trigger travel; pad output to Kyty (ABI 1.4)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
- core/libs/prx/libAstroHybridHost/Export.cpp  | 42 +++++++++++++++++--
+ core/libs/prx/libAkiBotHost/Export.cpp       | 42 +++++++++++++++++--
  core/libs/prx/libScePad/Export.cpp           |  7 ++++
  core/libs/prx/libScePad/include/PadState.hpp |  3 ++
  core/libs/prx/libScePad/src/PadState.cpp     | 43 ++++++++++++++++++++
  4 files changed, 92 insertions(+), 3 deletions(-)
 
-diff --git a/core/libs/prx/libAstroHybridHost/Export.cpp b/core/libs/prx/libAstroHybridHost/Export.cpp
-index df091b0c9f..4dc649f966 100644
---- a/core/libs/prx/libAstroHybridHost/Export.cpp
-+++ b/core/libs/prx/libAstroHybridHost/Export.cpp
+diff --git a/core/libs/prx/libAkiBotHost/Export.cpp b/core/libs/prx/libAkiBotHost/Export.cpp
+index 45259bbad7..c028b2b70e 100644
+--- a/core/libs/prx/libAkiBotHost/Export.cpp
++++ b/core/libs/prx/libAkiBotHost/Export.cpp
 @@ -2,6 +2,7 @@
  #include <cstddef>
  #include <cstdint>
@@ -203,5 +203,5 @@ index 2b57276eed..0f300270d0 100644
      if (port < 0 || port >= PAD_MAX_CONTROLLERS) return;
      std::lock_guard lock(stateMutex);
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

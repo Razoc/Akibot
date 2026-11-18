@@ -1,8 +1,8 @@
 From a4c0be3ff16139071ced1d1e33f511a4b689c76d Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Sun, 8 Nov 2026 21:13:08 +0000
-Subject: [PATCH] feat(hybrid): ASTROHYBRID_WINDOW_TITLE and
- ASTROHYBRID_OVERLAY start modes (fps/compact/full)
+Subject: [PATCH] feat(hybrid): AKIBOT_WINDOW_TITLE and
+ AKIBOT_OVERLAY start modes (fps/compact/full)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
@@ -35,10 +35,10 @@ index 6f4f395d..622df922 100644
  }
  
  bool PerformanceOverlayEnabled() noexcept {
-+	// ASTROHYBRID_OVERLAY (default unset): fps = FPS line only, compact = the F2 panel, full = the
++	// AKIBOT_OVERLAY (default unset): fps = FPS line only, compact = the F2 panel, full = the
 +	// Shift+F2 panel, shown from the start. F2 and Shift+F2 keep working.
 +	static const bool start_mode = [] {
-+		const char* mode = std::getenv("ASTROHYBRID_OVERLAY");
++		const char* mode = std::getenv("AKIBOT_OVERLAY");
 +		if (mode == nullptr) {
 +			return false;
 +		}
@@ -95,8 +95,8 @@ index 00c56f76..38ed15b3 100644
  	if (const auto* limit = VideoOut::FrameLimitLabel()) {
  		text += fmt::format(" | FPS limit: {}", limit);
  	}
-+	// ASTROHYBRID_WINDOW_TITLE (default unset): a fixed window title instead of the diagnostic one.
-+	static const char* fixed_title = std::getenv("ASTROHYBRID_WINDOW_TITLE");
++	// AKIBOT_WINDOW_TITLE (default unset): a fixed window title instead of the diagnostic one.
++	static const char* fixed_title = std::getenv("AKIBOT_WINDOW_TITLE");
 +	if (fixed_title != nullptr && fixed_title[0] != '\0') {
 +		text = fixed_title;
 +	}

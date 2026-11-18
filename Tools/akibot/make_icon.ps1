@@ -1,10 +1,10 @@
-# Génère l'icône originale d'Akibot (aucune image du jeu) : carré arrondi dégradé espace, « A » blanc, étoile orange.
-# Sorties : AstroHybrid.App\Resources\akibot.png (256 px) et akibot.ico (256/64/48/32/16).
+# Génère l'icône originale d'AkiBot (aucune image du jeu) : carré arrondi dégradé espace, « A » blanc, étoile orange.
+# Sorties : AkiBot.App\Resources\akibot.png (256 px) et akibot.ico (256/64/48/32/16).
 # Usage : powershell -NoProfile -ExecutionPolicy Bypass -File Tools\akibot\make_icon.ps1
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 $root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
-$res = Join-Path $root 'AstroHybrid.App\Resources'
+$res = Join-Path $root 'AkiBot.App\Resources'
 
 function Draw-Icon([int]$n) {
     $bmp = New-Object Drawing.Bitmap $n, $n

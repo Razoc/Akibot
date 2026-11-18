@@ -1,7 +1,7 @@
-From cbe27ba6773346568d15d2fded2d337d6f8d771e Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Fri, 30 Oct 2026 10:49:32 +0000
-Subject: [PATCH 17/26] feat(agc): configurable floor for the sampled texture
+Subject: [PATCH 17/27] feat(agc): configurable floor for the sampled texture
  cache budget (APS5_SAMPLED_BUDGET_FLOOR_MIB)
 
 The automatic budget subtracts every other device-local use and falls to
@@ -47,5 +47,5 @@ index 13536ff2a2..b526bd265a 100644
  | `APS5_SAMPLE_THREADS` | string | `core/libs/prx/libSceAgcDriver/Execution/src/WorkerSampler.cpp` |  | samples every thread of the process every 2 ms and writes each busy thread's hottest frames to a file (Windows only) |
  | `APS5_SAMPLE_QUEUE` | integer | `core/libs/prx/libSceAgcDriver/Execution/src/Driver/Queues/QueueWorker.cpp` | 0 | hexadecimal id of the queue worker APS5_SAMPLE_WORKER samples |
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

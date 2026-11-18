@@ -1,4 +1,4 @@
-# AstroHybrid milestone 1: kyty_gpu.dll
+# AkiBot milestone 1: kyty_gpu.dll
 
 Built 2026-11-06. Milestone 1 is done when the DLL builds, loads and exposes a verified interface.
 It is not connected to AstroBot.exe yet; the working AnyPS5 driver in `Build\Run\libs` is unchanged.
@@ -7,9 +7,9 @@ It is not connected to AstroBot.exe yet; the working AnyPS5 driver in `Build\Run
 
 | | |
 |---|---|
-| DLL | `E:\AstroHybrid-Work\build\kyty-gpu\kyty_gpu.dll` (21.5 MB, SHA-256 `4c6d645fd1293cfd4c9a156f1d7af6259d0a44ba33d65efab65cf15ac68a47a7`), PDB next to it |
-| Source | Kyty tree `E:\AstroHybrid-Work\source\kyty`, branch `hybrid` (from `astrohybrid/opt1` `3b269db5`) |
-| Build | `python -I tools/hybrid/build_kyty_gpu.py E:/AstroHybrid-Work/build/kyty E:/AstroHybrid-Work/build/kyty-gpu`: compiles only `src/hybrid/kytyGpuBridge.cpp` with kyty_emulator's exact clang-cl flags (read from its `build.ninja`) and links the existing 235 emulator objects (all but `main.cpp.obj`) and 57 libraries with lld-link. No Kyty rebuild; the emulator build directory is only read |
+| DLL | `E:\AkiBot-Work\build\kyty-gpu\kyty_gpu.dll` (21.5 MB, SHA-256 `4c6d645fd1293cfd4c9a156f1d7af6259d0a44ba33d65efab65cf15ac68a47a7`), PDB next to it |
+| Source | Kyty tree `E:\AkiBot-Work\source\kyty`, branch `hybrid` (from `akibot/opt1` `3b269db5`) |
+| Build | `python -I tools/hybrid/build_kyty_gpu.py E:/AkiBot-Work/build/kyty E:/AkiBot-Work/build/kyty-gpu`: compiles only `src/hybrid/kytyGpuBridge.cpp` with kyty_emulator's exact clang-cl flags (read from its `build.ninja`) and links the existing 235 emulator objects (all but `main.cpp.obj`) and 57 libraries with lld-link. No Kyty rebuild; the emulator build directory is only read |
 | Exports | 83: `KytyGpuGetApi` + the 82 graphics NIDs AstroBot.exe imports (65 libSceAgc, 6 libSceAgcDriver, 11 libSceVideoOut, from `Build\Run\AstroBot.registry.json`) |
 | Test | `tests/hybrid/kytyGpuLoadTest.c`, built with AnyPS5's MinGW GCC 15.2: **351/351 checks pass**; **352/352** with AnyPS5's own `Build\Run\libs\libwinpthread-1.dll` loaded first (the DLL then binds to it). Logs: `load-test.log`, `preload-test.log` next to the DLL |
 

@@ -1,5 +1,5 @@
-# AstroHybrid Sky Garden run: Tests\skygarden_bench.ps1 on Build\RunHybrid (AstroBot.exe with Kyty's GPU stack)
-# with the same settings as the Kyty baseline (E:\AstroHybrid-Work\tests\kyty_bench.ps1): the Kyty engine's
+# AkiBot Sky Garden run: Tests\skygarden_bench.ps1 on Build\RunHybrid (AstroBot.exe with Kyty's GPU stack)
+# with the same settings as the Kyty baseline (E:\AkiBot-Work\tests\kyty_bench.ps1): the Kyty engine's
 # u59 preset, 1280x720, Immediate presentation, Performance shaders, and by default the non-RT game patch
 # (AstroBot-NonRT.exe = the Kyty launcher's Candidate-NonRT.json). Kyty logs its own fps
 # ("Kyty fault cost: last N s, F fps") in stdout.log.
@@ -21,7 +21,7 @@ if (Test-Path $preset) {
     foreach ($p in $json.PSObject.Properties) { $e[$p.Name] = [string]$p.Value }
 }
 $e['APS5_GPU_ENGINE'] = 'kyty'
-$e['KYTY_GPU_HOST_MODULE'] = 'astrohybrid_host.dll'
+$e['KYTY_GPU_HOST_MODULE'] = 'akibot_host.dll'
 $e['KYTY_GPU_WIDTH'] = '1280'
 $e['KYTY_GPU_HEIGHT'] = '720'
 $e['KYTY_PRESENT_ABS_VBLANK'] = '1'

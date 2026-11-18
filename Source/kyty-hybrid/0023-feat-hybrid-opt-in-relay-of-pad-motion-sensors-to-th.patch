@@ -1,10 +1,10 @@
-From 91b297038bb881ac962985dad88c12832301dfd7 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Thu, 12 Nov 2026 14:03:20 +0000
-Subject: [PATCH 23/35] feat(hybrid): opt-in relay of pad motion sensors to the
+Subject: [PATCH 23/42] feat(hybrid): opt-in relay of pad motion sensors to the
  host (ABI 1.5)
 
-ASTROHYBRID_PAD_MOTION=1 passes the controller's accelerometer and gyroscope
+AKIBOT_PAD_MOTION=1 passes the controller's accelerometer and gyroscope
 to the host's pad library through the new publish_pad_motion callback.
 
 Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
@@ -14,7 +14,7 @@ Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
  2 files changed, 36 insertions(+), 1 deletion(-)
 
 diff --git a/src/hybrid/kytyGpuApi.h b/src/hybrid/kytyGpuApi.h
-index a1e1c261..295bdf38 100644
+index cb2d4530..41c40631 100644
 --- a/src/hybrid/kytyGpuApi.h
 +++ b/src/hybrid/kytyGpuApi.h
 @@ -21,7 +21,7 @@ extern "C" {
@@ -52,16 +52,16 @@ index a1e1c261..295bdf38 100644
  
  /* The callback table of a 1.3 host, the oldest the DLL accepts. */
 diff --git a/src/hybrid/kytyGpuBridge.cpp b/src/hybrid/kytyGpuBridge.cpp
-index 677582ba..666efc59 100644
+index c9bdc8ab..99d92217 100644
 --- a/src/hybrid/kytyGpuBridge.cpp
 +++ b/src/hybrid/kytyGpuBridge.cpp
 @@ -287,6 +287,12 @@ void Relay() {
  	}
  	Log(0, "input relay: Kyty pad %d for user %d -> host port 0%s", handle, user,
  	    g_host.fetch_pad_output != nullptr ? ", rumble, light bar and trigger effects <- host" : "");
-+	// ASTROHYBRID_PAD_MOTION=1: the controller's accelerometer and gyroscope reach the host's pad
++	// AKIBOT_PAD_MOTION=1: the controller's accelerometer and gyroscope reach the host's pad
 +	// library too (ABI 1.5), for games that read shaking or tilting. Off by default.
-+	const char* motion_env = std::getenv("ASTROHYBRID_PAD_MOTION");
++	const char* motion_env = std::getenv("AKIBOT_PAD_MOTION");
 +	const bool  motion     = motion_env != nullptr && motion_env[0] == '1' && g_host.publish_pad_motion != nullptr;
 +	bool        motion_seen = false;
 +	Log(0, "input relay: motion sensors %s", motion ? "-> host" : "not relayed");
@@ -94,5 +94,5 @@ index 677582ba..666efc59 100644
  		}
  		ApplyPadOutput(handle, output_seen, output_applied);
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

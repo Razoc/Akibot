@@ -1,29 +1,28 @@
-# Assembles the public download of AstroHybrid (AstroBot PC port) from this PC's build: the app and the
-# classic launcher, the start script, AnyPS5's relinker, and the runtime that goes next to the game
+# Assembles the public download of AkiBot (AstroBot PC port) from this PC's build: the app (it starts
+# the game itself, no script), AnyPS5's relinker, and the runtime that goes next to the game
 # (AnyPS5 system libraries, kyty_gpu.dll, the host module, NVIDIA runtime files with their licences).
 # Nothing from the game is included: no executable, no game files, no saves, no pipeline cache. Each
 # player's own dump is converted by the app's setup (Services\GameSetup.cs).
 # Usage: powershell -NoProfile -ExecutionPolicy Bypass -File Tools\release\make_release.ps1 [-Out E:\...] [-Version 1.0.0]
 param(
-    [string]$Out = 'E:\AstroHybrid-Work\release',
+    [string]$Out = 'E:\AkiBot-Work\release',
     [string]$Version = '1.0.0'
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
-$name = "AstroBotPC-AstroHybrid-$Version"
+$name = "AstroBotPC-AkiBot-$Version"
 $stage = Join-Path $Out $name
 if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }
 $run = Join-Path $stage 'Build\RunHybrid'
 New-Item -ItemType Directory -Force $run, (Join-Path $stage 'tools'), (Join-Path $stage 'licenses') | Out-Null
 
 # The app (built with MSBuild, Release) and its libraries.
-$app = Join-Path $root 'AstroHybrid.App\bin\Release'
+$app = Join-Path $root 'AkiBot.App\bin\Release'
 Get-ChildItem $app -File | Where-Object { $_.Extension -in '.exe', '.dll' } | Copy-Item -Destination $stage
 # The build's generated config: it carries the assembly binding redirects the app needs.
-$config = Join-Path $root 'AstroHybrid.App\obj\Release\AstroHybrid.exe.config'
+$config = Join-Path $root 'AkiBot.App\obj\Release\AkiBot.exe.config'
 if (-not (Select-String -Path $config -Pattern 'bindingRedirect' -Quiet)) { throw 'generated config has no binding redirects' }
-Copy-Item $config (Join-Path $stage 'AstroHybrid.exe.config')
-Copy-Item (Join-Path $root 'Run-AstroHybrid.bat') $stage
+Copy-Item $config (Join-Path $stage 'AkiBot.exe.config')
 
 # AnyPS5's relinker (needs only the Universal C runtime that ships with Windows 10/11).
 Copy-Item (Join-Path $root 'Build\anyps5\core\relinker\relinker.exe') (Join-Path $stage 'tools')
@@ -36,7 +35,7 @@ Get-ChildItem (Join-Path $src 'libs') -File | ForEach-Object {
     if ($bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) { throw "not a Windows module: $($_.Name)" }
     Copy-Item $_.FullName (Join-Path $run 'libs')
 }
-$runtime = 'kyty_gpu.dll', 'astrohybrid_host.dll', 'u59-preset.cmd', 'u59-preset.json',
+$runtime = 'kyty_gpu.dll', 'akibot_host.dll', 'u59-preset.json',
            'nvngx_dlss.dll', 'nvngx_dlssg.dll', 'NvLowLatencyVk.dll',
            'sl.interposer.dll', 'sl.common.dll', 'sl.dlss_g.dll', 'sl.reflex.dll', 'sl.pcl.dll'
 foreach ($f in $runtime) { Copy-Item (Join-Path $src $f) $run }
@@ -57,14 +56,14 @@ Get-ChildItem $fonts -Filter 'OFL-*.txt' | Copy-Item -Destination (Join-Path $st
 
 # Readme for players.
 @"
-AstroHybrid $Version - Astro Bot (PPSA21567) native PC port
+AkiBot $Version - Astro Bot (PPSA21567) native PC port
 ==========================================================
 
 You need your own decrypted PS5 dump of Astro Bot (the folder with eboot.bin, sce_module and sce_sys).
 No game files are included here.
 
 1. Extract this folder somewhere with about 1 GB free (the game itself stays where your dump is).
-2. Start AstroHybrid.exe. Setup asks for your dump folder, then builds the game for Windows from it
+2. Start AkiBot.exe. Setup asks for your dump folder, then builds the game for Windows from it
    (about 2 minutes; your dump is only read, never changed).
 3. The app picks the best settings for your PC once; change them on the Graphics and Controller pages.
 4. Press Play.

@@ -1,8 +1,8 @@
-From 732cfb36a674c27c694cebdb534ab30c243d27a6 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Sat, 14 Nov 2026 21:32:18 +0000
-Subject: [PATCH] feat(audioout,savedata): forward wireless DualSense audio to
- kyty_gpu and export sceSaveDataTransferringMount
+Subject: [PATCH 27/27] feat(audioout,savedata): forward wireless DualSense
+ audio to kyty_gpu and export sceSaveDataTransferringMount
 
 ---
  core/libs/prx/libSceAudioOut/src/AudioOut.cpp | 41 ++++++++++++++++++-
@@ -223,5 +223,5 @@ index 2caada7a85..d1fceb0ebb 100644
      return SAVE_DATA_ERROR_NOT_FOUND;
  }
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

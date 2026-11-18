@@ -23,7 +23,7 @@ index 2d3d72c3..9f87d1cc 100644
 +	if (!title_id.empty()) {
 +		return title_id;
 +	}
-+	const auto* value = std::getenv("ASTROHYBRID_CACHE_TITLE_ID");
++	const auto* value = std::getenv("AKIBOT_CACHE_TITLE_ID");
 +	const std::string_view id = value != nullptr ? value : "";
 +	if (id.size() != 9 || !id.starts_with("PPSA") ||
 +	    !std::ranges::all_of(id.substr(4), [](char c) { return c >= '0' && c <= '9'; })) {

@@ -1,0 +1,385 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Razoc <razoc@users.noreply.github.com>
+Date: Tue, 17 Nov 2026 23:04:17 +0100
+Subject: [PATCH 39/42] feat(akibot): AMD FSR 3.1 upscaling in place of the
+ game's temporal upscale
+
+AKIBOT_FSR=1 (build with KYTY_FFX_SDK_DIR = AMD FidelityFX SDK 1.1.4;
+amd_fidelityfx_vk.dll next to the game) replaces the same pass as DLSS,
+with the same inputs (ReadPass: both game versions), jitter and motion
+vector conventions. Near, far and vertical field of view come from the
+game's projection (NoteFrameGenCamera).
+
+FSR asks the device for some core functions by their old KHR names
+(vkGetBufferMemoryRequirements2KHR) and calls them unchecked: the
+backend's vkGetDeviceProcAddr wrapper gives the core function instead
+and logs the ones still missing.
+
+In-game menu: "Upscaling" adds AMD FSR 3.1.
+
+Checked in Sky Garden (01.007.000): FSR 1920x1080 -> 2432x1368 on every
+frame, 59-60 FPS, picture clean.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ CMakeLists.txt                                |   7 +
+ src/graphics/host_gpu/renderer/dlss.cpp       | 204 +++++++++++++++++-
+ src/graphics/host_gpu/renderer/dlss.h         |   4 +
+ src/graphics/host_gpu/renderer/render.h       |   2 +
+ src/graphics/host_gpu/renderer/renderDraw.cpp |   6 +-
+ src/graphics/presentation/akibotMenu.cpp      |   5 +-
+ 6 files changed, 220 insertions(+), 8 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index a7e3ac37..91b89950 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -2601,6 +2601,13 @@ if(KYTY_STREAMLINE_DIR)
+ 	target_compile_definitions(kyty_emulator PRIVATE KYTY_STREAMLINE=1)
+ 	target_include_directories(kyty_emulator PRIVATE "${KYTY_STREAMLINE_DIR}/include")
+ endif()
++# AkiBot: AMD FidelityFX SDK 1.1.4 (FSR 3.1 upscaling); the runtime amd_fidelityfx_vk.dll goes next to the game.
++set(KYTY_FFX_SDK_DIR "" CACHE PATH "AMD FidelityFX SDK folder (FSR); empty to build without it")
++if(KYTY_FFX_SDK_DIR)
++	target_compile_definitions(kyty_emulator PRIVATE KYTY_FFX=1)
++	target_include_directories(kyty_emulator PRIVATE "${KYTY_FFX_SDK_DIR}/ffx-api/include")
++	target_link_libraries(kyty_emulator "${KYTY_FFX_SDK_DIR}/PrebuiltSignedDLL/amd_fidelityfx_vk.lib")
++endif()
+ target_include_directories(kyty_emulator PRIVATE ${inc_headers})
+ 
+ clang_tidy_check(kyty_emulator "" "${check_headers}" "${inc_headers}")
+diff --git a/src/graphics/host_gpu/renderer/dlss.cpp b/src/graphics/host_gpu/renderer/dlss.cpp
+index fe6cff37..ba4bb79f 100644
+--- a/src/graphics/host_gpu/renderer/dlss.cpp
++++ b/src/graphics/host_gpu/renderer/dlss.cpp
+@@ -9,6 +9,11 @@
+ #include "graphics/host_gpu/renderer/renderContext.h"
+ #include "graphics/host_gpu/vulkanCommon.h"
+ 
++#if KYTY_FFX
++#include <ffx_api/ffx_api.h>
++#include <ffx_api/ffx_upscale.h>
++#include <ffx_api/vk/ffx_api_vk.h>
++#endif
+ #if KYTY_NGX
+ #include <nvsdk_ngx_helpers_vk.h>
+ #include <nvsdk_ngx_vk.h>
+@@ -43,6 +48,18 @@ bool Requested() {
+ 	return requested;
+ }
+ 
++bool FsrRequested() {
++	static const bool requested = [] {
++		const char* value = std::getenv("AKIBOT_FSR");
++		return value != nullptr && std::strcmp(value, "1") == 0;
++	}();
++	return requested;
++}
++
++bool UpscaleRequested() {
++	return Requested() || FsrRequested();
++}
++
+ void RequiredExtensions(std::vector<const char*>& instance, std::vector<const char*>& device) {
+ #if KYTY_NGX
+ 	if (!Requested()) {
+@@ -204,6 +221,13 @@ struct State {
+ 	// motion vectors used at 9, no jitter in the constants; the jitter comes from the camera).
+ 	uint64_t pass_hash_b = 0x5a34b303576ee324ull;
+ 	float    camera_jitter[2] {}; // clip-space offsets from the jittered projection (m[8], m[9])
++	float    camera_near = 0.05f, camera_far = 625.0f, camera_fov = 0.95f; // FSR's camera
++#if KYTY_FFX
++	ffxContext fsr       = nullptr;
++	bool       fsr_ready = true;
++	uint32_t   fsr_in_w = 0, fsr_in_h = 0, fsr_out_w = 0, fsr_out_h = 0;
++	int64_t    fsr_last_ns = 0;
++#endif
+ 	float    jitter_sign = 1.0f;
+ 	bool     depth_inverted = false;
+ 	int      quality = 0; // 0 quality, 1 balanced, 2 performance, 3 dlaa
+@@ -346,7 +370,7 @@ bool ReadPass(const State& s, const PreparedBindings& pixel, PassInfo& info) {
+ 
+ void RenderExecutor::NoteFrameGenCamera(const PreparedBindings& stage) {
+ 	const bool camera_wanted = FrameGen::CameraWanted();
+-	if (!camera_wanted && !Dlss::Requested()) {
++	if (!camera_wanted && !Dlss::UpscaleRequested()) {
+ 		return;
+ 	}
+ 	// The game's per-view constants: a perspective projection (16:9) at offset 128 of a 576-byte
+@@ -366,6 +390,12 @@ void RenderExecutor::NoteFrameGenCamera(const PreparedBindings& stage) {
+ 			Get().camera_jitter[0] = m[8];
+ 			Get().camera_jitter[1] = m[9];
+ 		}
++		// Near, far and vertical field of view for FSR (projection with depth 0 at the near plane).
++		if (std::fabs(m[10]) > 1e-6f && std::fabs(m[10] + 1.0f) > 1e-7f) {
++			Get().camera_near = std::fabs(m[14] / m[10]);
++			Get().camera_far  = std::fabs(m[14] / (m[10] + 1.0f));
++			Get().camera_fov  = 2.0f * std::atan(1.0f / m[5]);
++		}
+ 		if (camera_wanted) {
+ 			FrameGen::SetCamera(m);
+ 		}
+@@ -449,7 +479,7 @@ void RenderExecutor::TagFrameGen(CommandBuffer& buffer, PreparedBindings& pixel)
+ }
+ 
+ void RenderExecutor::NoteDlssTargets(std::span<const RenderColorInfo> colors, ImageId depth) {
+-	if ((!Dlss::Requested() && !FrameGen::Requested()) || !depth) {
++	if ((!Dlss::UpscaleRequested() && !FrameGen::Requested()) || !depth) {
+ 		return;
+ 	}
+ 	auto& s = Get();
+@@ -472,10 +502,178 @@ void RenderExecutor::NoteDlssTargets(std::span<const RenderColorInfo> colors, Im
+ 	}
+ }
+ 
++#if KYTY_FFX
++// FSR asks the device for its Vulkan functions through this: logs the ones the device does not give.
++PFN_vkGetDeviceProcAddr g_fsr_real_gdpa = nullptr;
++PFN_vkVoidFunction VKAPI_PTR FsrGetDeviceProcAddr(VkDevice device, const char* name) {
++	auto fn = g_fsr_real_gdpa != nullptr ? g_fsr_real_gdpa(device, name) : nullptr;
++	// FSR asks for some core Vulkan 1.1+ functions by their old extension name (…KHR) and calls them
++	// without checking: give it the core function when the extension name is not enabled.
++	if (fn == nullptr && g_fsr_real_gdpa != nullptr) {
++		const size_t length = std::strlen(name);
++		if (length > 3 && std::strcmp(name + length - 3, "KHR") == 0) {
++			const std::string core(name, length - 3);
++			fn = g_fsr_real_gdpa(device, core.c_str());
++		}
++	}
++	if (fn == nullptr) {
++		std::printf("FSR: device function missing: %s\n", name);
++		std::fflush(stdout);
++	}
++	return fn;
++}
++#endif
++
++bool RenderExecutor::TryFsrUpscale(CommandBuffer& buffer, PreparedBindings& pixel, ImageId output) {
++	auto&      s    = Get();
++	const auto hash = pixel.runtime->program->shader_hash;
++	if (hash != s.pass_hash && hash != s.pass_hash_b) {
++		return false;
++	}
++#if !KYTY_FFX
++	(void)buffer;
++	(void)output;
++	return Fail(s, Fallback::NotBuiltIn);
++#else
++	PassInfo pass;
++	if (!output || !ReadPass(s, pixel, pass)) {
++		return Fail(s, Fallback::Bindings);
++	}
++	if (!pass.mv_used) {
++		return Fail(s, Fallback::NoMotionVectors);
++	}
++	const uint32_t in_w = pass.in_w, in_h = pass.in_h, out_w = pass.out_w, out_h = pass.out_h;
++	auto&          cache = m_context.GetTextureCache();
++	ImageId        depth_id {};
++	for (const auto& pair: s.depth_pairs) {
++		if (pair.color == pass.mv) {
++			depth_id = pair.depth;
++		}
++	}
++	if (!depth_id || cache.m_slot_images.try_get(depth_id) == nullptr) {
++		return Fail(s, Fallback::NoDepth);
++	}
++	auto&      mv    = cache.GetImage(pass.mv);
++	auto&      color = cache.GetImage(pass.color);
++	auto&      depth = cache.GetImage(depth_id);
++	auto&      out   = cache.GetImage(output);
++	const auto same  = [](const Image& image, uint32_t w, uint32_t h) {
++        return image.info.extent.width == w && image.info.extent.height == h &&
++               image.backing.image != nullptr && image.info.samples == 1;
++	};
++	if (!same(mv, in_w, in_h) || !same(color, in_w, in_h) || !same(depth, in_w, in_h) ||
++	    !same(out, out_w, out_h) || !depth.info.IsDepth() ||
++	    !(out.backing.usage & vk::ImageUsageFlagBits::eStorage)) {
++		return Fail(s, Fallback::Sizes);
++	}
++	if (!s.fsr_ready) {
++		return Fail(s, Fallback::Unavailable);
++	}
++	auto& graphics = m_context.GetGraphics();
++	buffer.EndRendering();
++	const auto cmd = buffer.Handle();
++	if (s.fsr == nullptr || s.fsr_in_w != in_w || s.fsr_in_h != in_h || s.fsr_out_w != out_w ||
++	    s.fsr_out_h != out_h) {
++		if (s.fsr != nullptr) {
++			graphics.device.waitIdle();
++			ffxDestroyContext(&s.fsr, nullptr);
++			s.fsr = nullptr;
++		}
++		ffxCreateBackendVKDesc backend {};
++		backend.header.type      = FFX_API_CREATE_CONTEXT_DESC_TYPE_BACKEND_VK;
++		backend.vkDevice         = static_cast<VkDevice>(graphics.device);
++		backend.vkPhysicalDevice = static_cast<VkPhysicalDevice>(graphics.physical_device);
++		g_fsr_real_gdpa = reinterpret_cast<PFN_vkGetDeviceProcAddr>(
++		    graphics.instance.getProcAddr("vkGetDeviceProcAddr"));
++		backend.vkDeviceProcAddr = &FsrGetDeviceProcAddr;
++		std::printf("FSR: creating the upscaler (%ux%u -> %ux%u)\n", in_w, in_h, out_w, out_h);
++		std::fflush(stdout);
++		ffxCreateContextDescUpscale create {};
++		create.header.type    = FFX_API_CREATE_CONTEXT_DESC_TYPE_UPSCALE;
++		create.header.pNext   = &backend.header;
++		create.maxRenderSize  = {in_w, in_h};
++		create.maxUpscaleSize = {out_w, out_h};
++		create.flags          = FFX_UPSCALE_ENABLE_HIGH_DYNAMIC_RANGE | FFX_UPSCALE_ENABLE_AUTO_EXPOSURE |
++		               FFX_UPSCALE_ENABLE_MOTION_VECTORS_JITTER_CANCELLATION |
++		               (s.depth_inverted ? static_cast<uint32_t>(FFX_UPSCALE_ENABLE_DEPTH_INVERTED) : 0u);
++		const auto result = ffxCreateContext(&s.fsr, &create.header, nullptr);
++		if (result != FFX_API_RETURN_OK || s.fsr == nullptr) {
++			std::printf("FSR: context creation failed (%u) for %ux%u -> %ux%u\n", static_cast<unsigned>(result),
++			            in_w, in_h, out_w, out_h);
++			std::fflush(stdout);
++			s.fsr       = nullptr;
++			s.fsr_ready = false;
++			return Fail(s, Fallback::CreateFailed);
++		}
++		s.fsr_in_w = in_w, s.fsr_in_h = in_h, s.fsr_out_w = out_w, s.fsr_out_h = out_h;
++		s.feature_in_w = in_w, s.feature_in_h = in_h, s.feature_out_w = out_w, s.feature_out_h = out_h;
++		std::printf("FSR: AMD FSR 3.1 upscaler created, %ux%u -> %ux%u\n", in_w, in_h, out_w, out_h);
++		std::fflush(stdout);
++	}
++
++	mv.Transit(vk::ImageLayout::eShaderReadOnlyOptimal, vk::AccessFlagBits2::eShaderSampledRead, {}, cmd);
++	color.Transit(vk::ImageLayout::eShaderReadOnlyOptimal, vk::AccessFlagBits2::eShaderSampledRead, {}, cmd);
++	depth.Transit(vk::ImageLayout::eShaderReadOnlyOptimal, vk::AccessFlagBits2::eShaderSampledRead, {}, cmd);
++	out.Transit(vk::ImageLayout::eGeneral,
++	            vk::AccessFlagBits2::eShaderStorageRead | vk::AccessFlagBits2::eShaderStorageWrite, {}, cmd);
++	const auto resource = [](const Image& image, uint32_t usage, uint32_t state) {
++		FfxApiResourceDescription desc {};
++		desc.type     = FFX_API_RESOURCE_TYPE_TEXTURE2D;
++		desc.format   = ffxApiGetSurfaceFormatVK(static_cast<VkFormat>(image.backing.format));
++		desc.width    = image.info.extent.width;
++		desc.height   = image.info.extent.height;
++		desc.depth    = 1;
++		desc.mipCount = 1;
++		desc.flags    = FFX_API_RESOURCE_FLAGS_NONE;
++		desc.usage    = usage;
++		return ffxApiGetResourceVK(reinterpret_cast<void*>(static_cast<VkImage>(image.backing.image)), desc, state);
++	};
++	ffxDispatchDescUpscale dispatch {};
++	dispatch.header.type   = FFX_API_DISPATCH_DESC_TYPE_UPSCALE;
++	dispatch.commandList   = reinterpret_cast<void*>(static_cast<VkCommandBuffer>(cmd));
++	dispatch.color         = resource(color, FFX_API_RESOURCE_USAGE_READ_ONLY, FFX_API_RESOURCE_STATE_PIXEL_COMPUTE_READ);
++	dispatch.depth         = resource(depth, FFX_API_RESOURCE_USAGE_DEPTHTARGET, FFX_API_RESOURCE_STATE_PIXEL_COMPUTE_READ);
++	dispatch.motionVectors = resource(mv, FFX_API_RESOURCE_USAGE_READ_ONLY, FFX_API_RESOURCE_STATE_PIXEL_COMPUTE_READ);
++	dispatch.output        = resource(out, FFX_API_RESOURCE_USAGE_UAV, FFX_API_RESOURCE_STATE_UNORDERED_ACCESS);
++	// Same conventions as DLSS: jitter in input pixels, motion vectors in UV from previous to current.
++	dispatch.jitterOffset      = {pass.jitter_px[0], pass.jitter_px[1]};
++	dispatch.motionVectorScale = {-static_cast<float>(in_w), -static_cast<float>(in_h)};
++	dispatch.renderSize        = {in_w, in_h};
++	dispatch.upscaleSize       = {out_w, out_h};
++	dispatch.enableSharpening  = false;
++	dispatch.sharpness         = 0.0f;
++	const auto now             = NowNs();
++	dispatch.frameTimeDelta    = s.fsr_last_ns == 0
++	                                 ? 16.6f
++	                                 : std::clamp(static_cast<float>(now - s.fsr_last_ns) / 1.0e6f, 1.0f, 100.0f);
++	s.fsr_last_ns                    = now;
++	dispatch.preExposure             = 1.0f;
++	dispatch.reset                   = s.last_frame != 0 && pass.frame != s.last_frame + 1;
++	dispatch.cameraNear              = s.camera_near;
++	dispatch.cameraFar               = s.camera_far;
++	dispatch.cameraFovAngleVertical  = s.camera_fov;
++	dispatch.viewSpaceToMetersFactor = 1.0f;
++	s.last_frame                     = pass.frame;
++	s.last_jitter[0]                 = pass.jitter_px[0];
++	s.last_jitter[1]                 = pass.jitter_px[1];
++	const auto result                = ffxDispatch(&s.fsr, &dispatch.header);
++	buffer.ForgetBoundState();
++	if (result != FFX_API_RETURN_OK) {
++		return Fail(s, Fallback::EvaluateFailed);
++	}
++	s.evaluations++;
++	Summary(s);
++	return true;
++#endif
++}
++
+ bool RenderExecutor::TryDlssUpscale(CommandBuffer& buffer, PreparedBindings& pixel, ImageId output) {
+-	if (!Dlss::Requested() || pixel.runtime == nullptr || !*pixel.runtime) {
++	if (!Dlss::UpscaleRequested() || pixel.runtime == nullptr || !*pixel.runtime) {
+ 		return false;
+ 	}
++	if (Dlss::FsrRequested() && !Dlss::Requested()) {
++		return TryFsrUpscale(buffer, pixel, output);
++	}
+ 	auto& s = Get();
+ 	const auto hash = pixel.runtime->program->shader_hash;
+ 	if (hash != s.pass_hash && hash != s.pass_hash_b) {
+diff --git a/src/graphics/host_gpu/renderer/dlss.h b/src/graphics/host_gpu/renderer/dlss.h
+index e7cc1ac7..ad337b64 100644
+--- a/src/graphics/host_gpu/renderer/dlss.h
++++ b/src/graphics/host_gpu/renderer/dlss.h
+@@ -34,6 +34,10 @@
+ namespace Libs::Graphics::Dlss {
+ 
+ [[nodiscard]] bool Requested();
++// AkiBot: AKIBOT_FSR=1 replaces the same pass with AMD FSR 3.1 (build with KYTY_FFX_SDK_DIR;
++// amd_fidelityfx_vk.dll next to the game). UpscaleRequested: DLSS or FSR.
++[[nodiscard]] bool FsrRequested();
++[[nodiscard]] bool UpscaleRequested();
+ // Device creation: the extensions NGX needs (empty when not requested or not built in).
+ void RequiredExtensions(std::vector<const char*>& instance, std::vector<const char*>& device);
+ // AKIBOT_DLSS_PROBE=1: whether a device with VK_NVX_binary_import can be created now.
+diff --git a/src/graphics/host_gpu/renderer/render.h b/src/graphics/host_gpu/renderer/render.h
+index fdddb6e8..bbec4936 100644
+--- a/src/graphics/host_gpu/renderer/render.h
++++ b/src/graphics/host_gpu/renderer/render.h
+@@ -1187,6 +1187,8 @@ private:
+ 	void NoteDlssTargets(std::span<const RenderColorInfo> colors, ImageId depth);
+ 	[[nodiscard]] bool TryDlssUpscale(CommandBuffer& buffer, PreparedBindings& pixel,
+ 	                                  ImageId output);
++	// AKIBOT_FSR=1 (dlss.h): AMD FSR 3.1 upscaling in the same place as DLSS.
++	[[nodiscard]] bool TryFsrUpscale(CommandBuffer& buffer, PreparedBindings& pixel, ImageId output);
+ 	// AKIBOT_DLSSG (frameGen.h): the camera from a draw's bound constants, and the frame's
+ 	// depth, motion vectors and constants at the temporal upscale pass.
+ 	void NoteFrameGenCamera(const PreparedBindings& stage);
+diff --git a/src/graphics/host_gpu/renderer/renderDraw.cpp b/src/graphics/host_gpu/renderer/renderDraw.cpp
+index 0b90429f..c72a0b1d 100644
+--- a/src/graphics/host_gpu/renderer/renderDraw.cpp
++++ b/src/graphics/host_gpu/renderer/renderDraw.cpp
+@@ -4166,19 +4166,19 @@ void RenderExecutor::ExecutePreparedDraw(uint64_t submit_id, CommandBuffer& buff
+ 	// AKIBOT_DLSS (dlss.h): depth attachments by colour target, and the game's temporal
+ 	// upscale replaced by DLSS Super Resolution. A replaced draw records nothing else; like a
+ 	// skipped one (KYTY_PIPELINE_SKIP below) no run record may be continued across it.
+-	if (Dlss::Requested() || FrameGen::Requested()) [[unlikely]] {
++	if (Dlss::UpscaleRequested() || FrameGen::Requested()) [[unlikely]] {
+ 		NoteDlssTargets(std::span<const RenderColorInfo> {state.color_info, state.color_count},
+ 		                state.depth_info.image_id);
+ 		if (state.ps_active && bindings.pixel.has_value()) {
+ 			// The camera also gives DLSS its jitter in game version 01.007.000 (dlss.cpp, layout B).
+-			if (FrameGen::Active() || Dlss::Requested()) {
++			if (FrameGen::Active() || Dlss::UpscaleRequested()) {
+ 				NoteFrameGenCamera(*bindings.pixel);
+ 			}
+ 			if (FrameGen::Active()) {
+ 				TagFrameGen(buffer, *bindings.pixel);
+ 			}
+ 		}
+-		if (Dlss::Requested() && state.ps_active && bindings.pixel.has_value() && state.color_count != 0 &&
++		if (Dlss::UpscaleRequested() && state.ps_active && bindings.pixel.has_value() && state.color_count != 0 &&
+ 		    TryDlssUpscale(buffer, *bindings.pixel, state.color_info[0].image_id)) {
+ 			m_run.valid        = false;
+ 			m_run_active       = false;
+diff --git a/src/graphics/presentation/akibotMenu.cpp b/src/graphics/presentation/akibotMenu.cpp
+index 47a5d774..3422fccf 100644
+--- a/src/graphics/presentation/akibotMenu.cpp
++++ b/src/graphics/presentation/akibotMenu.cpp
+@@ -76,9 +76,10 @@ const std::vector<Option>& Options() {
+ 	    {Tab::Graphics, "lighting", Kind::Choice, {"Ray tracing", "Ray tracing"},
+ 	     {{"OFF - éclairage rapide", "OFF - faster lighting"}, {"ON - ray tracing", "ON - ray tracing"}},
+ 	     Live::No, false, 0},
+-	    {Tab::Graphics, "upscale", Kind::Choice, {"DLSS", "DLSS"},
++	    {Tab::Graphics, "upscale", Kind::Choice, {"Mise à l'échelle", "Upscaling"},
+ 	     {{"Celui du jeu", "Game's own"}, {"Qualité", "Quality"}, {"Équilibré", "Balanced"},
+-	      {"Performance", "Performance"}, {"Ultra Performance", "Ultra Performance"}, {"DLAA", "DLAA"}},
++	      {"Performance", "Performance"}, {"Ultra Performance", "Ultra Performance"}, {"DLAA", "DLAA"},
++	      {"AMD FSR 3.1", "AMD FSR 3.1"}},
+ 	     Live::No, false, 0},
+ 	    {Tab::Graphics, "fgmode", Kind::Choice, {"Frame Generation", "Frame Generation"},
+ 	     {{"Désactivée", "Off"}, {"Auto (conseillé)", "Auto (recommended)"}, {"x2", "2x"}, {"x3", "3x"}, {"x4", "4x"}},
+-- 
+2.56.0.windows.4
+

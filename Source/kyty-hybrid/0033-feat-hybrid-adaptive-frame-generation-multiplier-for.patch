@@ -1,7 +1,7 @@
-From cc09c69c6009bd7218e5c90eb385dd033b91f1fe Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Thu, 12 Nov 2026 23:45:13 +0000
-Subject: [PATCH 33/35] feat(hybrid): adaptive frame generation multiplier for
+Subject: [PATCH 33/42] feat(hybrid): adaptive frame generation multiplier for
  an on-screen target
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
@@ -11,14 +11,14 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  2 files changed, 76 insertions(+), 2 deletions(-)
 
 diff --git a/src/graphics/host_gpu/renderer/frameGen.cpp b/src/graphics/host_gpu/renderer/frameGen.cpp
-index 619cf064..80f8eab1 100644
+index fce900ab..5a2787b7 100644
 --- a/src/graphics/host_gpu/renderer/frameGen.cpp
 +++ b/src/graphics/host_gpu/renderer/frameGen.cpp
 @@ -162,6 +162,15 @@ struct State {
  	uint64_t              presents = 0, presented_frames = 0;
  	std::atomic<double>   shown_ratio {1.0};
  	int64_t               print_ns = 0;
-+	// ASTROHYBRID_DLSSG_TARGET: adaptive multiplier (present thread, options under options_mutex).
++	// AKIBOT_DLSSG_TARGET: adaptive multiplier (present thread, options under options_mutex).
 +	std::mutex            options_mutex;
 +	uint32_t              target_fps = 0;
 +	uint32_t              max_frames = 3;
@@ -58,13 +58,13 @@ index 619cf064..80f8eab1 100644
  	s.tags = s.tag_failures = s.sleeps = 0;
  	s.presents = s.presented_frames = 0;
 @@ -302,6 +314,12 @@ PFN_vkGetInstanceProcAddr LoaderBeforeInstance() {
- 	if (const char* value = std::getenv("ASTROHYBRID_DLSSG_FRAMES"); value != nullptr) {
+ 	if (const char* value = std::getenv("AKIBOT_DLSSG_FRAMES"); value != nullptr) {
  		s.frames_generated = std::max(1, std::atoi(value));
  	}
-+	if (const char* value = std::getenv("ASTROHYBRID_DLSSG_TARGET"); value != nullptr) {
++	if (const char* value = std::getenv("AKIBOT_DLSSG_TARGET"); value != nullptr) {
 +		s.target_fps = static_cast<uint32_t>(std::clamp(std::atoi(value), 0, 400));
 +	}
-+	if (const char* value = std::getenv("ASTROHYBRID_DLSSG_MAX_FRAMES"); value != nullptr) {
++	if (const char* value = std::getenv("AKIBOT_DLSSG_MAX_FRAMES"); value != nullptr) {
 +		s.max_frames = static_cast<uint32_t>(std::clamp(std::atoi(value), 1, 5));
 +	}
  	std::printf("DLSS-G: Streamline initialised; Vulkan through sl.interposer.dll\n");
@@ -89,7 +89,7 @@ index 619cf064..80f8eab1 100644
  }
  
 +namespace {
-+// ASTROHYBRID_DLSSG_TARGET: the smallest multiplier that keeps the screen at or above the target for
++// AKIBOT_DLSSG_TARGET: the smallest multiplier that keeps the screen at or above the target for
 +// the game's measured frame rate (half-second windows); up after one short window, down only after
 +// four windows (2 s) in which the lower multiplier would have been enough.
 +void Adapt() {
@@ -145,19 +145,19 @@ index 619cf064..80f8eab1 100644
  	}
  }
 diff --git a/src/graphics/host_gpu/renderer/frameGen.h b/src/graphics/host_gpu/renderer/frameGen.h
-index 972415e9..e3f33ab7 100644
+index 2acd363d..2842ba18 100644
 --- a/src/graphics/host_gpu/renderer/frameGen.h
 +++ b/src/graphics/host_gpu/renderer/frameGen.h
 @@ -26,6 +26,9 @@
  //  - the presenter marks present start and end with the presented flip's frame.
- // ASTROHYBRID_DLSSG_FRAMES=n (default 1): frames generated per rendered frame, clamped to what the
+ // AKIBOT_DLSSG_FRAMES=n (default 1): frames generated per rendered frame, clamped to what the
  // runtime reports (numFramesToGenerateMax). Dynamic multi frame generation is not used (D3D12 only).
-+// ASTROHYBRID_DLSSG_TARGET=n (default 0 = fixed): adaptive whole multiplier instead: every half second
++// AKIBOT_DLSSG_TARGET=n (default 0 = fixed): adaptive whole multiplier instead: every half second
 +// the smallest multiplier keeping the screen at or above n FPS for the game's measured rate (up at
-+// once, down after 2 s), at most ASTROHYBRID_DLSSG_MAX_FRAMES (default 3) generated frames.
++// once, down after 2 s), at most AKIBOT_DLSSG_MAX_FRAMES (default 3) generated frames.
  // One "DLSS-G 10s:" console line every 10 s with the runtime's status and frames presented.
  namespace Libs::Graphics::FrameGen {
  
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

@@ -4,7 +4,7 @@ Date: Thu, 12 Nov 2026 20:20:55 +0000
 Subject: [PATCH] feat(hybrid): opt-in NVIDIA low-latency mode through
  VK_NV_low_latency2
 
-ASTROHYBRID_LOW_LATENCY=1|measure (default off). Enables the extension
+AKIBOT_LOW_LATENCY=1|measure (default off). Enables the extension
 and present IDs when the device reports both, sets the swapchain's
 low-latency sleep mode, ends each guest frame at the DCB submission
 carrying its flip with the driver's latency sleep, numbers frames by
@@ -40,7 +40,7 @@ index 6ef666c4..396c4901 100644
  		RequestState                state;
  		Graphics::Presenter::Frame* frame;
  		bool                        premultiplied_alpha;
-+		uint64_t                    latency_frame; // ASTROHYBRID_LOW_LATENCY frame number
++		uint64_t                    latency_frame; // AKIBOT_LOW_LATENCY frame number
  	};
  
  	Graphics::Presenter& m_presenter;
@@ -274,7 +274,7 @@ index 00000000..fe23dea6
 +// 0 off, 1 on, 2 measure (markers and driver reports, low-latency mode off).
 +static int Mode() {
 +	static const int mode = [] {
-+		const char* value = std::getenv("ASTROHYBRID_LOW_LATENCY");
++		const char* value = std::getenv("AKIBOT_LOW_LATENCY");
 +		if (value == nullptr) {
 +			return 0;
 +		}
@@ -492,7 +492,7 @@ index 00000000..c30fd2b8
 +
 +#include <vulkan/vulkan_core.h>
 +
-+// ASTROHYBRID_LOW_LATENCY=1 (default 0; "measure": markers and driver reports with the
++// AKIBOT_LOW_LATENCY=1 (default 0; "measure": markers and driver reports with the
 +// low-latency mode and its sleep off, for comparison): NVIDIA low-latency mode through VK_NV_low_latency2 (the
 +// Vulkan side of Reflex), driven by Kyty itself. Enabled only when the device reports both
 +// VK_NV_low_latency2 and VK_KHR_present_id with its presentId feature; otherwise the switch is
@@ -584,7 +584,7 @@ index 2cf0c4f5..caa9055e 100644
  	present.waitSemaphoreCount = 1;
  
  	vk::Result result;
-+	// ASTROHYBRID_LOW_LATENCY (lowLatency.h): the presented flip's frame number as present ID.
++	// AKIBOT_LOW_LATENCY (lowLatency.h): the presented flip's frame number as present ID.
 +	const auto            latency_id = LowLatency::BeginPresent(static_cast<VkSwapchainKHR>(m_handle));
 +	vk::PresentIdKHR      present_id {};
 +	if (latency_id != 0) {
@@ -632,7 +632,7 @@ index 7a5413db..afe22daf 100644
  				device_extensions.push_back(VK_KHR_MAINTENANCE_8_EXTENSION_NAME);
  			}
  		}
-+		// ASTROHYBRID_LOW_LATENCY (lowLatency.h): VK_NV_low_latency2 with present IDs.
++		// AKIBOT_LOW_LATENCY (lowLatency.h): VK_NV_low_latency2 with present IDs.
 +		if (LowLatency::WantExtensions(
 +		        HasExtension(available_extensions, VK_NV_LOW_LATENCY_2_EXTENSION_NAME),
 +		        HasExtension(available_extensions, VK_KHR_PRESENT_ID_EXTENSION_NAME))) {
@@ -673,7 +673,7 @@ index cfbf72df..827ef3ca 100644
  	GraphicsDbgDumpDcb("d", size_in_dwords, dcb);
  	EXIT_IF(g_renderer == nullptr);
  	g_renderer->GetGpu().Submit(std::span {dcb, size_in_dwords}, {});
-+	// ASTROHYBRID_LOW_LATENCY: a submission carrying a flip ends the guest frame (lowLatency.h).
++	// AKIBOT_LOW_LATENCY: a submission carrying a flip ends the guest frame (lowLatency.h).
 +	Graphics::LowLatency::AfterDcbSubmit();
  }
  

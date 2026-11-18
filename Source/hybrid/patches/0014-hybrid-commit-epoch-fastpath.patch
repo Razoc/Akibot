@@ -4,7 +4,7 @@ Date: Thu, 12 Nov 2026 19:26:21 +0000
 Subject: [PATCH] feat(hybrid): opt-in generation fast path for writable buffer
  bindings
 
-ASTROHYBRID_COMMIT_EPOCH_FASTPATH=1|verify|exit (default 0). A writable
+AKIBOT_COMMIT_EPOCH_FASTPATH=1|verify|exit (default 0). A writable
 binding seen before is accepted from the range's tracker signature, the
 buffer structure epoch and a new GPU-modified range removal counter
 instead of re-running its synchronizations; anything else takes the
@@ -24,9 +24,9 @@ index 07cee45e..ccec8ed9 100644
  	return ParseEnvU64("KYTY_BINDING_MEMO_CROSS_EPOCH", 1) != 0;
  }
  
-+// ASTROHYBRID_COMMIT_EPOCH_FASTPATH (bufferCache.h): 0 off (default), 1 on, 2 verify, 3 exit.
++// AKIBOT_COMMIT_EPOCH_FASTPATH (bufferCache.h): 0 off (default), 1 on, 2 verify, 3 exit.
 +int CommitEpochFastPathMode() {
-+	const char* value = std::getenv("ASTROHYBRID_COMMIT_EPOCH_FASTPATH");
++	const char* value = std::getenv("AKIBOT_COMMIT_EPOCH_FASTPATH");
 +	if (value == nullptr || value[0] == '\0' || std::strcmp(value, "0") == 0) {
 +		return 0;
 +	}
@@ -320,7 +320,7 @@ index 82d0fb2e..1ce38202 100644
  		uint64_t verify_mismatches = 0;
  	};
  	WrittenSyncTotals m_written_sync_totals;
-+	// ASTROHYBRID_COMMIT_EPOCH_FASTPATH (default 0; 1 on, verify, exit; GPU thread): a writable
++	// AKIBOT_COMMIT_EPOCH_FASTPATH (default 0; 1 on, verify, exit; GPU thread): a writable
 +	// binding (ObtainBuffer written, not texel; ObtainWrittenBuffer) of a key seen before
 +	// (range, written ranges, caller's buffer id) is accepted from generations instead of running
 +	// its synchronization again, while

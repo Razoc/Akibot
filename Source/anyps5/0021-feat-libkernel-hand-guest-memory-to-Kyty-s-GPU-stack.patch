@@ -1,10 +1,10 @@
-From 7afc16282eda1b426748677342ac567b524efcf7 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Fri, 6 Nov 2026 20:55:34 +0000
-Subject: [PATCH 21/26] feat(libkernel): hand guest memory to Kyty's GPU stack
+Subject: [PATCH 21/27] feat(libkernel): hand guest memory to Kyty's GPU stack
  behind APS5_GPU_ENGINE=kyty
 
-AstroHybrid: AstroBot.exe renders with Kyty's GPU stack (kyty_gpu.dll) while
+AkiBot: AstroBot.exe renders with Kyty's GPU stack (kyty_gpu.dll) while
 AnyPS5 keeps CPU execution and the other system services.
 
 - libc: GuestArenaDonate / GuestArenaDonateAt split a placeholder range off
@@ -14,24 +14,24 @@ AnyPS5 keeps CPU execution and the other system services.
   memory calls go to kyty_gpu.dll, and munmap, mprotect, virtual queries and
   range names go there for addresses in a donated range. Unset (default):
   unchanged. APS5_GPU_ENGINE_TRACE=1 logs each forwarded map.
-- libAstroHybridHost: the host callbacks kyty_gpu.dll binds (GPU event
+- libAkiBotHost: the host callbacks kyty_gpu.dll binds (GPU event
   registration on the game's event queues and their delivery, guest range
   donation) and the SystemService HDR hooks of the replaced driver.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
- core/libs/prx/libAstroHybridHost/Export.cpp   | 154 ++++++++++++++++++
+ core/libs/prx/libAkiBotHost/Export.cpp        | 154 ++++++++++++++++++
  core/libs/prx/libc/include/GuestArena.hpp     |   3 +
  core/libs/prx/libc/src/GuestArena.cpp         |  82 ++++++++++
  .../prx/libkernel/DirectMemory/Export.cpp     | 129 ++++++++++++++-
  4 files changed, 367 insertions(+), 1 deletion(-)
- create mode 100644 core/libs/prx/libAstroHybridHost/Export.cpp
+ create mode 100644 core/libs/prx/libAkiBotHost/Export.cpp
 
-diff --git a/core/libs/prx/libAstroHybridHost/Export.cpp b/core/libs/prx/libAstroHybridHost/Export.cpp
+diff --git a/core/libs/prx/libAkiBotHost/Export.cpp b/core/libs/prx/libAkiBotHost/Export.cpp
 new file mode 100644
-index 0000000000..620a300651
+index 0000000000..2888bd54c6
 --- /dev/null
-+++ b/core/libs/prx/libAstroHybridHost/Export.cpp
++++ b/core/libs/prx/libAkiBotHost/Export.cpp
 @@ -0,0 +1,154 @@
 +#include <algorithm>
 +#include <cstddef>
@@ -81,7 +81,7 @@ index 0000000000..620a300651
 +std::vector<Registration> g_registrations;
 +
 +void Log(void*, int level, const char* message) {
-+    std::fprintf(stderr, "[astrohybrid %d] %s\n", level, message);
++    std::fprintf(stderr, "[akibot %d] %s\n", level, message);
 +}
 +
 +std::int16_t FilterOf(std::uint32_t kind) {
@@ -173,16 +173,16 @@ index 0000000000..620a300651
 +
 +extern "C" {
 +
-+const HostCallbacks* AstroHybridHostCallbacks_nid_no_patch() {
++const HostCallbacks* AkiBotHostCallbacks_nid_no_patch() {
 +    return &g_callbacks;
 +}
 +
-+void AstroHybridHostHdr_nid_no_patch(AgcDriver::HostHdrStatus& status) {
++void AkiBotHostHdr_nid_no_patch(AgcDriver::HostHdrStatus& status) {
 +    status = AgcDriver::HostHdrStatus{};
 +    status.reportedToneMapPeak = g_reportedToneMapPeak;
 +}
 +
-+void AstroHybridNoteReportedToneMapPeak_nid_no_patch(float nits) {
++void AkiBotNoteReportedToneMapPeak_nid_no_patch(float nits) {
 +    g_reportedToneMapPeak = nits;
 +}
 +
@@ -572,5 +572,5 @@ index 619cf83633..8ac62570a5 100644
   if (!addr || len == 0 || len > UINTPTR_MAX - start) return SCE_KERNEL_ERROR_EINVAL;
   std::lock_guard lock(g_rangeNameLock);
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

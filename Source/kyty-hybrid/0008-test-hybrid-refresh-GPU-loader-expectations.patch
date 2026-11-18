@@ -1,14 +1,14 @@
-From ee2229e5ee347c0628f74f1a173a03917497ca41 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Fri, 6 Nov 2026 22:11:28 +0000
-Subject: [PATCH 08/35] test(hybrid): refresh GPU loader expectations
+Subject: [PATCH 08/42] test(hybrid): refresh GPU loader expectations
 
 ---
  tests/hybrid/kytyGpuLoadTest.c | 5 +++--
  1 file changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/tests/hybrid/kytyGpuLoadTest.c b/tests/hybrid/kytyGpuLoadTest.c
-index 45baf0d9..b508ffb6 100644
+index d6a3207f..52130e1e 100644
 --- a/tests/hybrid/kytyGpuLoadTest.c
 +++ b/tests/hybrid/kytyGpuLoadTest.c
 @@ -168,7 +168,7 @@ int main(int argc, char** argv) {
@@ -38,5 +38,5 @@ index 45baf0d9..b508ffb6 100644
  	uint32_t bound = 0;
  	for (uint32_t i = 0; i < count; ++i) bound += api->nid_info(i)->bound != 0;
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

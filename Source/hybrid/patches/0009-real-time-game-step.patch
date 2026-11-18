@@ -2,7 +2,7 @@ From 0872512f9c7555794432958ca1a108a116ae481e Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Sun, 8 Nov 2026 20:08:47 +0000
 Subject: [PATCH] feat(hybrid): opt-in real-time game step
- (ASTROHYBRID_GAME_SPEED)
+ (AKIBOT_GAME_SPEED)
 
 Astro Bot advances 1/FrameRate per frame from one global, so below 60 FPS it
 plays in slow motion. With the switch on, each present writes the measured
@@ -45,21 +45,21 @@ index 4b705e04..c78125c8 100644
 +	uint64_t  last  = 0;
 +};
 +
-+// ASTROHYBRID_GAME_SPEED=1 (default off): Astro Bot advances a fixed 1/FrameRate per frame from one
++// AKIBOT_GAME_SPEED=1 (default off): Astro Bot advances a fixed 1/FrameRate per frame from one
 +// global (eboot 0x8ff0040: f64 frame rate, f32 1/rate, u64 microseconds per frame; image +0x400000),
 +// so below 60 FPS the game runs in slow motion (30 FPS = half speed). With the switch on, every
 +// present writes the measured frame rate there (the limit itself when the cadence holds it), clamped
-+// to 20..120. ASTROHYBRID_GAME_STEP_ADDR overrides the address; the block is checked first.
++// to 20..120. AKIBOT_GAME_STEP_ADDR overrides the address; the block is checked first.
 +void UpdateGameStep(GameStep& step, uint64_t now, uint64_t frequency, uint32_t limit) {
 +	static const bool enabled = [] {
-+		const char* value = std::getenv("ASTROHYBRID_GAME_SPEED");
++		const char* value = std::getenv("AKIBOT_GAME_SPEED");
 +		return value != nullptr && std::strcmp(value, "1") == 0;
 +	}();
 +	if (!enabled || step.dead) {
 +		return;
 +	}
 +	if (!step.ready) {
-+		const char* custom = std::getenv("ASTROHYBRID_GAME_STEP_ADDR");
++		const char* custom = std::getenv("AKIBOT_GAME_STEP_ADDR");
 +		const auto  addr   = custom != nullptr ? std::strtoull(custom, nullptr, 0) : 0x93F0040ull;
 +		MEMORY_BASIC_INFORMATION info {};
 +		if (VirtualQuery(reinterpret_cast<void*>(addr), &info, sizeof(info)) != sizeof(info) ||

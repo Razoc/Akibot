@@ -1,7 +1,7 @@
-From 764c177c0e84cc387e867333715078a082d70461 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Fri, 30 Oct 2026 00:55:46 +0000
-Subject: [PATCH 12/26] feat(agc): compute-lane batches on a second Vulkan
+Subject: [PATCH 12/27] feat(agc): compute-lane batches on a second Vulkan
  queue (APS5_COMPUTE_QUEUE)
 
 With APS5_COMPUTE_LANE on, APS5_COMPUTE_QUEUE creates one more queue in the
@@ -238,5 +238,5 @@ index e20cf98503..54b32affd4 100644
  | `APS5_COPY_HLE_CPU_MAX` | integer | `core/libs/prx/libSceAgcDriver/Execution/src/Driver/Memory/BufferCopy.cpp` | 262144 | largest copy in bytes the CPU side of the copy HLE handles |
  | `APS5_COPY_HLE_GPU_MAX` | integer | `core/libs/prx/libSceAgcDriver/Execution/src/Driver/Memory/BufferCopy.cpp` |  | largest copy in bytes the GPU side of the copy HLE handles; unset means no limit |
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

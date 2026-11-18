@@ -1,7 +1,7 @@
-From 16b45168c5dd97d0d0f14b16475928c313155a94 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Thu, 29 Oct 2026 12:09:28 +0000
-Subject: [PATCH 04/26] perf(agc): record DMA_DATA stores into GDS on the GPU
+Subject: [PATCH 04/27] perf(agc): record DMA_DATA stores into GDS on the GPU
  instead of draining
 
 APS5_GDS_GPU_STORES=1 resolves a DMA_DATA whose destination is GDS (immediate pattern or memory
@@ -145,5 +145,5 @@ index f862041333..01f8f9c418 100644
  | `APS5_GPU_COPY_MAX_KIB` | integer | `core/libs/prx/libSceAgcDriver/Graphics/src/GuestBufferMemory.cpp` | 1024 | size cap in KiB on a descriptor sub-range copied through the GPU path, larger ones staying on the CPU |
  | `APS5_GPU_NO_WRITEBACK` | presence | `core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp` |  | skips writing GPU results back into guest memory |
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

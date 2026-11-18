@@ -1,7 +1,7 @@
-From 26465923103080c986e536011d8a3d5ff71173f4 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Fri, 6 Nov 2026 19:24:01 +0000
-Subject: [PATCH 20/26] perf(agc): reuse a data-only draw stage rebased to
+Subject: [PATCH 20/27] perf(agc): reuse a data-only draw stage rebased to
  moved user-data pointers (APS5_REBASED_STAGE_REUSE)
 
 A data-only draw candidate required every used user word to be bit-identical,
@@ -425,5 +425,5 @@ index ed4b5280c1..5338fe0904 100644
          std::cout << "Data-only hits " << (verify ? "verified" : "reused") << " the stages whose read user words did not change\n";
          return 0;
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

@@ -1,7 +1,7 @@
-From 9696e74ac8b252dcb130ae106aeeced41fbddeba Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Wed, 28 Oct 2026 22:51:46 +0000
-Subject: [PATCH 02/26] feat(agc): APS5_TRACE_MARKERS prints PUSH_MARKER paths
+Subject: [PATCH 02/27] feat(agc): APS5_TRACE_MARKERS prints PUSH_MARKER paths
  with draw and dispatch counts per frame
 
 ---
@@ -146,5 +146,5 @@ index 7fdf700a1a..4ecd22d7d4 100644
  ### libSceAgcDriver
  
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

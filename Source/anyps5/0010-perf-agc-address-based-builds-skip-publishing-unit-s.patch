@@ -1,7 +1,7 @@
-From 2da75848ba195261ffce94883bbce46777fdf55d Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Thu, 29 Oct 2026 22:46:53 +0000
-Subject: [PATCH 10/26] perf(agc): address-based builds skip publishing unit
+Subject: [PATCH 10/27] perf(agc): address-based builds skip publishing unit
  shadows over their heaps
 
 APS5_BDA_NO_SHADOW_PUBLISH=1: UploadFinish no longer publishes the unit shadows over the whole
@@ -46,5 +46,5 @@ index 784b1f6f96..978953b3eb 100644
  | `APS5_BDA_TABLE_CACHE_ENTRIES` | integer | `core/libs/prx/libSceAgcDriver/Graphics/src/BdaResources.cpp` | 8 | number of recently used BDA page tables kept in the cache, clamped to 1..64 (1 is the previous behaviour) |
  | `APS5_BLOCK_WRITEBACK_EACH` | presence | `core/libs/prx/libSceAgcDriver/Graphics/src/Texture.cpp` |  | stores the touched units only on every write-back instead of widening repeated partial stores |
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

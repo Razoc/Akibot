@@ -1,0 +1,2 @@
+# Les patchs gardent leurs fins de ligne exactes (git am --keep-cr).
+*.patch -text

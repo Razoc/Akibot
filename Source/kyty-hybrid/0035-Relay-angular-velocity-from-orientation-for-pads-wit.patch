@@ -1,7 +1,7 @@
-From 7b310c70fac848c71d9a262e60a957586504446b Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Fri, 13 Nov 2026 00:54:29 +0000
-Subject: [PATCH 35/35] Relay: angular velocity from orientation for pads
+Subject: [PATCH 35/42] Relay: angular velocity from orientation for pads
  without a gyroscope
 
 Kyty's emulated tilt reports orientation with angular velocity at rest;
@@ -15,11 +15,11 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  1 file changed, 27 insertions(+)
 
 diff --git a/src/hybrid/kytyGpuBridge.cpp b/src/hybrid/kytyGpuBridge.cpp
-index 227a176f..8f4a8b97 100644
+index 975bccc6..56089621 100644
 --- a/src/hybrid/kytyGpuBridge.cpp
 +++ b/src/hybrid/kytyGpuBridge.cpp
 @@ -293,6 +293,13 @@ void Relay() {
- 	const char* motion_env = std::getenv("ASTROHYBRID_PAD_MOTION");
+ 	const char* motion_env = std::getenv("AKIBOT_PAD_MOTION");
  	const bool  motion     = motion_env != nullptr && motion_env[0] == '1' && g_host.publish_pad_motion != nullptr;
  	bool        motion_seen = false;
 +	// A pad without a gyroscope (Kyty's emulated tilt: View/Back, then the right stick) reports its
@@ -60,5 +60,5 @@ index 227a176f..8f4a8b97 100644
  				                     sensors.angular_velocity[2] != 0.0f)) {
  					motion_seen = true;
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

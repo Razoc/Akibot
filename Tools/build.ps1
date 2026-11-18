@@ -6,7 +6,7 @@ $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
 $Tools = "$Root\Tools"
 $Game = "$Root\Game\PPSA21567-app"
-$AnyPS5Commit = '319621ba2'        # tested revision of boykopovar/AnyPS5 main; Source/patches/*.patch go on top
+$AnyPS5Commit = '319621ba2'        # tested revision of boykopovar/AnyPS5 main; Source/anyps5/*.patch go on top
 $WinLibs = 'https://github.com/brechtsanders/winlibs_mingw/releases/download/15.2.0posix-14.0.0-ucrt-r7/winlibs-x86_64-posix-seh-gcc-15.2.0-mingw-w64ucrt-14.0.0-r7.zip'
 $SevenZip = 'C:\Program Files\7-Zip\7z.exe'
 
@@ -25,10 +25,10 @@ if (-not $SkipToolchain) {
         git clone https://github.com/boykopovar/AnyPS5.git "$Tools\AnyPS5"; Check
     }
     git -C "$Tools\AnyPS5" fetch --filter=blob:none --deepen 200 origin main; Check
-    git -C "$Tools\AnyPS5" checkout -B astrobot $AnyPS5Commit; Check
-    foreach ($patch in Get-ChildItem "$Root\Source\patches\*.patch" | Sort-Object Name) {
+    git -C "$Tools\AnyPS5" checkout -B akibot $AnyPS5Commit; Check
+    foreach ($patch in Get-ChildItem "$Root\Source\anyps5\*.patch" | Sort-Object Name) {
         Step "Applying $($patch.Name)"
-        git -C "$Tools\AnyPS5" -c user.name=local -c user.email=local@localhost am --3way $patch.FullName; Check
+        git -C "$Tools\AnyPS5" -c user.name=local -c user.email=local@localhost am --keep-cr --3way $patch.FullName; Check
     }
     git -C "$Tools\AnyPS5" submodule update --init --recursive --depth 1 -j 8; Check
 }

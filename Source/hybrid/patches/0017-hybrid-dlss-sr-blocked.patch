@@ -4,13 +4,13 @@ Date: Thu, 12 Nov 2026 21:20:42 +0000
 Subject: [PATCH] feat(hybrid): opt-in DLSS Super Resolution for the game's
  temporal upscale (blocked)
 
-ASTROHYBRID_DLSS=1 with a KYTY_NGX_SDK_DIR build replaces Astro Bot's
+AKIBOT_DLSS=1 with a KYTY_NGX_SDK_DIR build replaces Astro Bot's
 temporal upscale draw with NGX DLSS using the game's own colour, depth,
 motion vectors and jitter. NGX's Vulkan path needs VK_NVX_binary_import,
 whose CUDA backing cannot reserve its address window in this process
 (the PS5 memory map holds it), so device creation fails with the
-extension and DLSS reports unavailable without it. ASTROHYBRID_DLSS_PROBE
-and ASTROHYBRID_DLSS_SKIP_EXT are the diagnostics used to establish it.
+extension and DLSS reports unavailable without it. AKIBOT_DLSS_PROBE
+and AKIBOT_DLSS_SKIP_EXT are the diagnostics used to establish it.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
@@ -33,7 +33,7 @@ index bbc54be8..8d05e720 100644
  endif()
  # dlopen/dlsym/dladdr for RenderDoc.
  target_link_libraries(kyty_emulator ${CMAKE_DL_LIBS})
-+# AstroHybrid: NVIDIA DLSS Super Resolution through NGX (renderer/dlss.cpp). Set to the NGX SDK
++# AkiBot: NVIDIA DLSS Super Resolution through NGX (renderer/dlss.cpp). Set to the NGX SDK
 +# folder (include/, lib/Windows_x86_64/nvsdk_ngx_d.lib) to build it in; empty: not built in.
 +set(KYTY_NGX_SDK_DIR "" CACHE PATH "NVIDIA NGX SDK folder (DLSS); empty to build without it")
 +if(KYTY_NGX_SDK_DIR)
@@ -87,7 +87,7 @@ index 00000000..7cf7cdd4
 +
 +bool Requested() {
 +	static const bool requested = [] {
-+		const char* value = std::getenv("ASTROHYBRID_DLSS");
++		const char* value = std::getenv("AKIBOT_DLSS");
 +		return value != nullptr && std::strcmp(value, "1") == 0;
 +	}();
 +	return requested;
@@ -107,8 +107,8 @@ index 00000000..7cf7cdd4
 +		std::printf("DLSS: NGX did not report its Vulkan extensions\n");
 +		return;
 +	}
-+	// ASTROHYBRID_DLSS_SKIP_EXT=<name>,<name>: extensions not to enable (diagnostic).
-+	const char* skip_value = std::getenv("ASTROHYBRID_DLSS_SKIP_EXT");
++	// AKIBOT_DLSS_SKIP_EXT=<name>,<name>: extensions not to enable (diagnostic).
++	const char* skip_value = std::getenv("AKIBOT_DLSS_SKIP_EXT");
 +	const std::string skip = skip_value != nullptr ? std::string(",") + skip_value + "," : std::string();
 +	const auto skipped = [&](const char* name) {
 +		return !skip.empty() && skip.find(std::string(",") + name + ",") != std::string::npos;
@@ -140,10 +140,10 @@ index 00000000..7cf7cdd4
 +#endif
 +}
 +
-+// ASTROHYBRID_DLSS_PROBE=1 (diagnostic): a throwaway device with only VK_NVX_binary_import,
++// AKIBOT_DLSS_PROBE=1 (diagnostic): a throwaway device with only VK_NVX_binary_import,
 +// created through vulkan-1.dll directly; prints whether the driver accepts it at this point.
 +void ProbeBinaryImport(const char* when) {
-+	const char* value = std::getenv("ASTROHYBRID_DLSS_PROBE");
++	const char* value = std::getenv("AKIBOT_DLSS_PROBE");
 +	if (value == nullptr || std::strcmp(value, "1") != 0) {
 +		return;
 +	}
@@ -272,16 +272,16 @@ index 00000000..7cf7cdd4
 +State& Get() {
 +	static State state = [] {
 +		State s;
-+		if (const char* value = std::getenv("ASTROHYBRID_DLSS_PASS"); value != nullptr) {
++		if (const char* value = std::getenv("AKIBOT_DLSS_PASS"); value != nullptr) {
 +			s.pass_hash = std::strtoull(value, nullptr, 16);
 +		}
-+		if (const char* value = std::getenv("ASTROHYBRID_DLSS_JITTER_SIGN"); value != nullptr) {
++		if (const char* value = std::getenv("AKIBOT_DLSS_JITTER_SIGN"); value != nullptr) {
 +			s.jitter_sign = std::strtof(value, nullptr) < 0 ? -1.0f : 1.0f;
 +		}
-+		if (const char* value = std::getenv("ASTROHYBRID_DLSS_DEPTH_INVERTED"); value != nullptr) {
++		if (const char* value = std::getenv("AKIBOT_DLSS_DEPTH_INVERTED"); value != nullptr) {
 +			s.depth_inverted = std::strcmp(value, "0") != 0;
 +		}
-+		if (const char* value = std::getenv("ASTROHYBRID_DLSS_QUALITY"); value != nullptr) {
++		if (const char* value = std::getenv("AKIBOT_DLSS_QUALITY"); value != nullptr) {
 +			s.quality = std::strcmp(value, "balanced") == 0      ? 1
 +			            : std::strcmp(value, "performance") == 0 ? 2
 +			            : std::strcmp(value, "dlaa") == 0        ? 3
@@ -408,17 +408,17 @@ index 00000000..7cf7cdd4
 +	auto& graphics = m_context.GetGraphics();
 +	if (!s.init_tried) {
 +		s.init_tried = true;
-+		const char*  path_value = std::getenv("ASTROHYBRID_DLSS_PATH");
++		const char*  path_value = std::getenv("AKIBOT_DLSS_PATH");
 +		std::wstring path       = path_value != nullptr
 +		                              ? std::wstring(path_value, path_value + std::strlen(path_value))
-+		                              : std::wstring(L"E:\\AstroHybrid-Work\\sdk\\streamline-v2.14.16\\bin\\x64");
++		                              : std::wstring(L"E:\\AkiBot-Work\\sdk\\streamline-v2.14.16\\bin\\x64");
 +		const wchar_t*              paths[] = {path.c_str()};
 +		NVSDK_NGX_FeatureCommonInfo info {};
 +		info.PathListInfo.Path   = paths;
 +		info.PathListInfo.Length = 1;
 +		const auto result = NVSDK_NGX_VULKAN_Init_with_ProjectID(
 +		    "8e5a33f4-7e0f-4c5b-9a5c-1c2e7d4b3a10", NVSDK_NGX_ENGINE_TYPE_CUSTOM, "1.0",
-+		    L"E:\\AstroHybrid-Work\\ngx-data", static_cast<VkInstance>(graphics.instance),
++		    L"E:\\AkiBot-Work\\ngx-data", static_cast<VkInstance>(graphics.instance),
 +		    static_cast<VkPhysicalDevice>(graphics.physical_device),
 +		    static_cast<VkDevice>(graphics.device), VULKAN_HPP_DEFAULT_DISPATCHER.vkGetInstanceProcAddr,
 +		    VULKAN_HPP_DEFAULT_DISPATCHER.vkGetDeviceProcAddr, &info);
@@ -588,10 +588,10 @@ index 00000000..31e311c7
 +#include <cstdint>
 +#include <vector>
 +
-+// ASTROHYBRID_DLSS=1 (default 0; needs a build with KYTY_NGX_SDK_DIR): NVIDIA DLSS Super Resolution
++// AKIBOT_DLSS=1 (default 0; needs a build with KYTY_NGX_SDK_DIR): NVIDIA DLSS Super Resolution
 +// in place of Astro Bot's own temporal upscale pass (RenderExecutor::TryDlssUpscale, dlss.cpp).
 +//
-+// The pass (pixel shader 2936e5eca99d75e7, ASTROHYBRID_DLSS_PASS overrides the hash) is a
++// The pass (pixel shader 2936e5eca99d75e7, AKIBOT_DLSS_PASS overrides the hash) is a
 +// full-screen draw that reads the SMAA-resolved colour, the G-buffer target whose .xy are the
 +// game's motion vectors and the previous history, and writes the upscaled colour and the next
 +// history. Its constant buffer gives every value DLSS needs: the current and previous jitter
@@ -607,16 +607,16 @@ index 00000000..31e311c7
 +// Anything missing or inconsistent (no NGX, DLSS unavailable, another size, no depth, the game
 +// not using motion vectors this frame) leaves the game's pass to run as before.
 +//
-+// Options: ASTROHYBRID_DLSS_QUALITY=quality|balanced|performance|dlaa (the DLSS preset family;
-+// default quality); ASTROHYBRID_DLSS_JITTER_SIGN=1|-1 (default 1); ASTROHYBRID_DLSS_DEPTH_INVERTED=1|0
-+// (default 1); ASTROHYBRID_DLSS_PATH: the folder holding nvngx_dlss.dll.
++// Options: AKIBOT_DLSS_QUALITY=quality|balanced|performance|dlaa (the DLSS preset family;
++// default quality); AKIBOT_DLSS_JITTER_SIGN=1|-1 (default 1); AKIBOT_DLSS_DEPTH_INVERTED=1|0
++// (default 1); AKIBOT_DLSS_PATH: the folder holding nvngx_dlss.dll.
 +// One "DLSS 10s:" console line every 10 s with evaluations and fallbacks by reason.
 +namespace Libs::Graphics::Dlss {
 +
 +[[nodiscard]] bool Requested();
 +// Device creation: the extensions NGX needs (empty when not requested or not built in).
 +void RequiredExtensions(std::vector<const char*>& instance, std::vector<const char*>& device);
-+// ASTROHYBRID_DLSS_PROBE=1: whether a device with VK_NVX_binary_import can be created now.
++// AKIBOT_DLSS_PROBE=1: whether a device with VK_NVX_binary_import can be created now.
 +void ProbeBinaryImport(const char* when);
 +
 +} // namespace Libs::Graphics::Dlss
@@ -645,7 +645,7 @@ index 8bebefa1..dc36c0a6 100644
  	                                                        uint32_t render_target_slice_offset);
  	void                      BindImage(ImageId id, bool storage);
  	void                      BindRenderTarget(ImageId id);
-+	// ASTROHYBRID_DLSS (dlss.h): every draw's colour targets and depth attachment; and the game's
++	// AKIBOT_DLSS (dlss.h): every draw's colour targets and depth attachment; and the game's
 +	// temporal upscale draw replaced by DLSS (true: recorded, the draw is done).
 +	void NoteDlssTargets(std::span<const RenderColorInfo> colors, ImageId depth);
 +	[[nodiscard]] bool TryDlssUpscale(CommandBuffer& buffer, PreparedBindings& pixel,
@@ -669,7 +669,7 @@ index ad642673..39861a35 100644
  	}
  	CommitStats::StepMark(CommitStats::Step::LateCheck);
  
-+	// ASTROHYBRID_DLSS (dlss.h): depth attachments by colour target, and the game's temporal
++	// AKIBOT_DLSS (dlss.h): depth attachments by colour target, and the game's temporal
 +	// upscale replaced by DLSS Super Resolution. A replaced draw records nothing else; like a
 +	// skipped one (KYTY_PIPELINE_SKIP below) no run record may be continued across it.
 +	if (Dlss::Requested()) [[unlikely]] {
@@ -719,7 +719,7 @@ index afe22daf..1a8c48e3 100644
  		r.required_extensions.push_back(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
  	}
  
-+	// ASTROHYBRID_DLSS (renderer/dlss.h): NGX's instance extensions, where available.
++	// AKIBOT_DLSS (renderer/dlss.h): NGX's instance extensions, where available.
 +	{
 +		std::vector<const char*> ngx_instance;
 +		std::vector<const char*> ngx_device;
@@ -738,7 +738,7 @@ index afe22daf..1a8c48e3 100644
  				device_extensions.push_back(VK_KHR_MAINTENANCE_8_EXTENSION_NAME);
  			}
  		}
-+		// ASTROHYBRID_DLSS (renderer/dlss.h): NGX's device extensions, where available.
++		// AKIBOT_DLSS (renderer/dlss.h): NGX's device extensions, where available.
 +		{
 +			std::vector<const char*> ngx_instance;
 +			std::vector<const char*> ngx_device;
@@ -758,7 +758,7 @@ index afe22daf..1a8c48e3 100644
 +				}
 +			}
 +		}
- 		// ASTROHYBRID_LOW_LATENCY (lowLatency.h): VK_NV_low_latency2 with present IDs.
+ 		// AKIBOT_LOW_LATENCY (lowLatency.h): VK_NV_low_latency2 with present IDs.
  		if (LowLatency::WantExtensions(
  		        HasExtension(available_extensions, VK_NV_LOW_LATENCY_2_EXTENSION_NAME),
 @@ -2155,6 +2194,7 @@ void WindowContext::CreateVulkan() {

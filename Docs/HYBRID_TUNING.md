@@ -1,4 +1,4 @@
-# AstroHybrid tuning — November 7, 2026
+# AkiBot tuning — November 7, 2026
 
 Target: 40 FPS in Sky Garden, then 60. **40 FPS has not been achieved.**
 All changes remain opt-in. Do not infer gains from different scenes or isolated FPS readings.
@@ -25,7 +25,7 @@ preparation wait into CP idle wait: high-priority workers also spin while guest 
 Shortening the spin alone did not help.
 
 The launcher enables this combination only with
-`ASTROHYBRID_DRAW_PREP_TUNING=1`. Absent/0 preserves previous behavior; explicit underlying
+`AKIBOT_DRAW_PREP_TUNING=1`. Absent/0 preserves previous behavior; explicit underlying
 environment variables override the profile. Four isolated launcher smoke tests verify these
 branches and the established AboveNormal process class without loading the game.
 
@@ -70,7 +70,7 @@ Existing runtime switches to test next, each against alternating controls:
 `KYTY_SUBMIT_MIN_INTERVAL_US`, `KYTY_IDLE_FLUSH_DRAWS`, `KYTY_GFX_SLICE_DRAWS`.
 
 A separate CPU-ISA build experiment is prepared in `Tools/hybrid/build_gpu_v3.cmd`.
-It requires explicit `ASTROHYBRID_BUILD_V3=1`, checks for a running game and disk headroom,
+It requires explicit `AKIBOT_BUILD_V3=1`, checks for a running game and disk headroom,
 uses existing offline dependencies and PGO, and writes a separate E: build/DLL.
 It does not deploy or change the default DLL. It has not yet established a performance gain.
 

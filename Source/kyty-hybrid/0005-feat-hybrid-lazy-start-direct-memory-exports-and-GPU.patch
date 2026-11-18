@@ -1,11 +1,11 @@
-From 1c71591b764eba63d2646f899fc6c8005b722a7d Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Fri, 6 Nov 2026 20:26:48 +0000
-Subject: [PATCH 05/35] feat(hybrid): lazy start, direct-memory exports and GPU
+Subject: [PATCH 05/42] feat(hybrid): lazy start, direct-memory exports and GPU
  event proxy (milestone 2b)
 
 - Unbound exports now trap into a resolver that saves every System V
-  argument register, loads the host module (libAstroHybridHost.prx), binds
+  argument register, loads the host module (libAkiBotHost.prx), binds
   the table, starts the renderer and continues the call.
 - The 13 direct-memory libkernel NIDs the game imports are exported (Kyty's
   kernel memory owns GPU-visible memory in the hybrid); AnyPS5 modules'
@@ -31,7 +31,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  create mode 100644 tests/hybrid/kytyGpuTestHost.c
 
 diff --git a/src/hybrid/kytyGpuApi.h b/src/hybrid/kytyGpuApi.h
-index 1be37cd5..b62835a0 100644
+index 72b81c80..68348496 100644
 --- a/src/hybrid/kytyGpuApi.h
 +++ b/src/hybrid/kytyGpuApi.h
 @@ -21,7 +21,7 @@ extern "C" {
@@ -55,16 +55,16 @@ index 1be37cd5..b62835a0 100644
  } KytyGpuHostCallbacks;
  
 +/* The host module kyty_gpu.dll looks for when game code reaches an export before any host called
-+ * init: LoadLibrary(KYTY_GPU_HOST_MODULE or "libAstroHybridHost.prx"), then this function. */
-+#define KYTY_GPU_HOST_MODULE_DEFAULT "libAstroHybridHost.prx"
-+#define KYTY_GPU_HOST_ENTRY "AstroHybridHostCallbacks_nid_no_patch"
++ * init: LoadLibrary(KYTY_GPU_HOST_MODULE or "libAkiBotHost.prx"), then this function. */
++#define KYTY_GPU_HOST_MODULE_DEFAULT "libAkiBotHost.prx"
++#define KYTY_GPU_HOST_ENTRY "AkiBotHostCallbacks_nid_no_patch"
 +typedef const KytyGpuHostCallbacks* (*KytyGpuHostEntryFn)(void);
 +
  typedef struct KytyGpuPacket { /* identical to AGC's Packet and AnyPS5's Packet */
  	uint32_t* addr;
  	uint32_t  dw_num;
 diff --git a/src/hybrid/kytyGpuBridge.cpp b/src/hybrid/kytyGpuBridge.cpp
-index b6da560a..e9b970a7 100644
+index 84b78beb..5877e54b 100644
 --- a/src/hybrid/kytyGpuBridge.cpp
 +++ b/src/hybrid/kytyGpuBridge.cpp
 @@ -20,6 +20,8 @@
@@ -188,7 +188,7 @@ index b6da560a..e9b970a7 100644
 +}
 +
 +bool StartProxy() {
-+	if (EventQueue::KernelCreateEqueue(&g_proxy, "AstroHybridProxy") != 0 ||
++	if (EventQueue::KernelCreateEqueue(&g_proxy, "AkiBotProxy") != 0 ||
 +	    EventQueue::KernelAddUserEvent(g_proxy, ProxyWakeId) != 0) {
 +		Log(2, "event proxy: Kyty did not create its proxy queue");
 +		return false;
@@ -674,7 +674,7 @@ index 09681e62..4c6914f5 100644
 +    "rVjRvHJ0X6c"=kyty_gpu_nid_95
 +    "vSMAm3cxYTY"=kyty_gpu_nid_96
 diff --git a/tests/hybrid/kytyGpuLoadTest.c b/tests/hybrid/kytyGpuLoadTest.c
-index 1a84eae9..45baf0d9 100644
+index b2ac25a5..d6a3207f 100644
 --- a/tests/hybrid/kytyGpuLoadTest.c
 +++ b/tests/hybrid/kytyGpuLoadTest.c
 @@ -13,7 +13,10 @@
@@ -683,7 +683,7 @@ index 1a84eae9..45baf0d9 100644
   *
 - * Usage: kytyGpuLoadTest <kyty_gpu.dll> [--preload <libwinpthread-1.dll>] [--graphics]
 + *   8. --lazy: without init, the first call through an export loads the host module
-+ *      (libAstroHybridHost.prx, here kytyGpuTestHost.c), starts Kyty and returns the right result
++ *      (libAkiBotHost.prx, here kytyGpuTestHost.c), starts Kyty and returns the right result
 + *
 + * Usage: kytyGpuLoadTest <kyty_gpu.dll> [--preload <libwinpthread-1.dll>] [--graphics | --lazy]
   * Exit code 0 when every check passes. */
@@ -773,11 +773,11 @@ index 1a84eae9..45baf0d9 100644
  	host.struct_size = 8;
 diff --git a/tests/hybrid/kytyGpuTestHost.c b/tests/hybrid/kytyGpuTestHost.c
 new file mode 100644
-index 00000000..7c3a2e42
+index 00000000..47d96702
 --- /dev/null
 +++ b/tests/hybrid/kytyGpuTestHost.c
 @@ -0,0 +1,55 @@
-+/* Test host module for kytyGpuLoadTest --lazy: stands in for AnyPS5's libAstroHybridHost.prx.
++/* Test host module for kytyGpuLoadTest --lazy: stands in for AnyPS5's libAkiBotHost.prx.
 + * kyty_gpu.dll loads it by name when game code reaches an export before any init, and binds
 + * through these callbacks. Built with MinGW GCC like the real host. Guest range donation is left
 + * out: the test process has no AnyPS5 guest arena, so Kyty reserves the free space itself. */
@@ -825,7 +825,7 @@ index 00000000..7c3a2e42
 +    sizeof(KytyGpuHostCallbacks), KYTY_GPU_ABI_VERSION, NULL, HostLog, HostAdd, HostDelete, HostDeliver, NULL, NULL, NULL,
 +};
 +
-+__declspec(dllexport) const KytyGpuHostCallbacks* AstroHybridHostCallbacks_nid_no_patch(void) {
++__declspec(dllexport) const KytyGpuHostCallbacks* AkiBotHostCallbacks_nid_no_patch(void) {
 +	return &g_callbacks;
 +}
 +
@@ -833,7 +833,7 @@ index 00000000..7c3a2e42
 +	return g_added;
 +}
 diff --git a/tools/hybrid/gen_kyty_gpu_exports.py b/tools/hybrid/gen_kyty_gpu_exports.py
-index bcb59099..aebda5e2 100644
+index 315a9b8d..95f4b17e 100644
 --- a/tools/hybrid/gen_kyty_gpu_exports.py
 +++ b/tools/hybrid/gen_kyty_gpu_exports.py
 @@ -15,8 +15,11 @@ import re
@@ -893,5 +893,5 @@ index bcb59099..aebda5e2 100644
                  binding = "KYTY_GPU_BINDING_KYTY_VERIFIED" if nid in VERIFIED else "KYTY_GPU_BINDING_KYTY"
                  rows.append((nid, library, kyty[nid], binding))
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

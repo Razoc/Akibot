@@ -4,7 +4,7 @@ Date: Thu, 12 Nov 2026 21:35:49 +0000
 Subject: [PATCH] feat(libc): keep a CUDA address window free in the guest
  arena when requested
 
-ASTROHYBRID_CUDA_HOLE leaves 0xDC00000000-0xEC00000000 unreserved and
+AKIBOT_CUDA_HOLE leaves 0xDC00000000-0xEC00000000 unreserved and
 marks it as a host region, so the NVIDIA driver can place the CUDA
 window that VK_NVX_binary_import (NGX DLSS) needs below 1 TiB.
 
@@ -30,7 +30,7 @@ index f192a1917f..bb9f930a84 100644
          const std::uintptr_t granularity = system.dwAllocationGranularity;
          const std::uintptr_t end = ApplicationAreaEnd;
          std::uint32_t retries = 0;
-+        const bool cudaWindow = std::getenv("ASTROHYBRID_CUDA_HOLE") != nullptr;
++        const bool cudaWindow = std::getenv("AKIBOT_CUDA_HOLE") != nullptr;
          for (std::uintptr_t cursor = ArenaStart; cursor < end;) {
 +            if (cudaWindow && cursor >= CudaWindowStart && cursor < CudaWindowEnd) {
 +                _holes.emplace_back(cursor, CudaWindowEnd);

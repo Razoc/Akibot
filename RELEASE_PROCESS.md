@@ -1,4 +1,4 @@
-# AstroHybrid Launcher Release Process
+# AkiBot Launcher Release Process
 
 This document describes how to prepare and publish a new launcher release that works with the automatic update system.
 
@@ -9,9 +9,9 @@ The launcher checks for updates via the GitHub Releases API. When a new release 
 ## Release Package Requirements
 
 The launcher expects a ZIP file with the following naming convention:
-- **Pattern**: `AstroBotPC-AstroHybrid-{version}.zip` (e.g., `AstroBotPC-AstroHybrid-1.1.0.zip`)
+- **Pattern**: `AstroBotPC-AkiBot-{version}.zip` (e.g., `AstroBotPC-AkiBot-1.1.0.zip`)
 - **Size**: Less than 300 MB (to distinguish from full game packages)
-- **Contents**: The launcher executable (`AstroHybrid.exe`), its dependencies (DLLs, config files), and any resources
+- **Contents**: The launcher executable (`AkiBot.exe`), its dependencies (DLLs, config files), and any resources
 
 ## Preparing a Release
 
@@ -19,25 +19,25 @@ The launcher expects a ZIP file with the following naming convention:
 
 ```powershell
 # Build in Release configuration
-msbuild AstroHybrid.App/AstroHybrid.App.csproj /p:Configuration=Release
+msbuild AkiBot.App/AkiBot.App.csproj /p:Configuration=Release
 ```
 
-The built files will be in `AstroHybrid.App/bin/Release/`
+The built files will be in `AkiBot.App/bin/Release/`
 
 ### 2. Create the Release Package
 
 Create a ZIP file containing:
-- `AstroHybrid.exe`
+- `AkiBot.exe`
 - All `*.dll` files from the build output
-- `AstroHybrid.exe.config` (the generated config with binding redirects)
-- `Resources/astrohybrid.ico` (if not embedded)
+- `AkiBot.exe.config` (the generated config with binding redirects)
+- `Resources/akibot.ico` (if not embedded)
 - Any other required runtime files
 
 **Example PowerShell script:**
 ```powershell
 $version = "1.1.0"
-$buildDir = "AstroHybrid.App\bin\Release"
-$packageName = "AstroBotPC-AstroHybrid-$version"
+$buildDir = "AkiBot.App\bin\Release"
+$packageName = "AstroBotPC-AkiBot-$version"
 $stageDir = "release\$packageName"
 
 # Clean and create staging directory
@@ -48,7 +48,7 @@ New-Item -ItemType Directory -Force $stageDir | Out-Null
 Get-ChildItem $buildDir -File | Where-Object { $_.Extension -in '.exe', '.dll', '.config' } | Copy-Item -Destination $stageDir
 
 # Copy the generated config (has binding redirects)
-Copy-Item "$buildDir\AstroHybrid.exe.config" $stageDir
+Copy-Item "$buildDir\AkiBot.exe.config" $stageDir
 
 # Create ZIP
 Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -58,7 +58,7 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 ### 3. Generate SHA256 (Optional but Recommended)
 
 ```powershell
-$zipPath = "release\AstroBotPC-AstroHybrid-$version.zip"
+$zipPath = "release\AstroBotPC-AkiBot-$version.zip"
 $sha256 = Get-FileHash $zipPath -Algorithm SHA256 | Select-Object -ExpandProperty Hash
 Write-Host "SHA256: $sha256"
 ```
@@ -67,13 +67,13 @@ Write-Host "SHA256: $sha256"
 
 1. Go to https://github.com/imnotsharingmyname/pcportastrobot/releases/new
 2. **Tag version**: `v{version}` (e.g., `v1.1.0`)
-3. **Release title**: `AstroHybrid {version}` (e.g., `AstroHybrid 1.1.0`)
+3. **Release title**: `AkiBot {version}` (e.g., `AkiBot 1.1.0`)
 4. **Description**: Include release notes with:
    - New features
    - Bug fixes
    - Improvements
    - Known issues (if any)
-5. **Attach the ZIP file**: Upload `AstroBotPC-AstroHybrid-{version}.zip`
+5. **Attach the ZIP file**: Upload `AstroBotPC-AkiBot-{version}.zip`
 6. **Publish release** (not as pre-release)
 
 ### 5. Version Numbering
@@ -97,7 +97,7 @@ The launcher compares versions numerically (e.g., 1.1.0 > 1.0.9).
 
 - Endpoint: `https://api.github.com/repos/imnotsharingmyname/pcportastrobot/releases`
 - Filters: Non-prerelease releases only
-- Asset matching: ZIP files containing "astrohybrid" in name, under 300 MB
+- Asset matching: ZIP files containing "akibot" in name, under 300 MB
 
 ### Update Notification
 
@@ -110,9 +110,9 @@ When an update is available:
 ### Update Installation
 
 1. User clicks "Update Now" or "Update" button
-2. Launcher downloads ZIP to `%APPDATA%\AstroHybrid\Build\launcher\temp\`
+2. Launcher downloads ZIP to `%APPDATA%\AkiBot\Build\launcher\temp\`
 3. Verifies SHA256 (if provided in release metadata)
-4. Backs up current launcher to `%APPDATA%\AstroHybrid\Build\launcher\backup\`
+4. Backs up current launcher to `%APPDATA%\AkiBot\Build\launcher\backup\`
 5. Extracts and installs new files
 6. Restarts launcher automatically
 
@@ -125,7 +125,7 @@ When an update is available:
 
 ## Settings
 
-The following settings control update behavior (stored in `astrohybrid-settings.json`):
+The following settings control update behavior (stored in `akibot-settings.json`):
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
@@ -138,7 +138,7 @@ The following settings control update behavior (stored in `astrohybrid-settings.
 ### Update Not Detected
 
 1. Verify release is **not** marked as pre-release
-2. Verify ZIP filename matches `AstroBotPC-AstroHybrid-{version}.zip`
+2. Verify ZIP filename matches `AstroBotPC-AkiBot-{version}.zip`
 3. Verify ZIP size is under 300 MB
 4. Check GitHub API rate limits (unauthenticated: 60/hour)
 
@@ -157,7 +157,7 @@ The following settings control update behavior (stored in `astrohybrid-settings.
 ## Example Release Notes Format
 
 ```markdown
-## AstroHybrid 1.1.0
+## AkiBot 1.1.0
 
 ### New Features
 - Added support for XYZ feature

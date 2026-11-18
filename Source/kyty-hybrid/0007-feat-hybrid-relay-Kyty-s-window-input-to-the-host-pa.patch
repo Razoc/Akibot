@@ -1,7 +1,7 @@
-From b6ac01cdb4cfc2d4844c45af50da21716e47785c Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Fri, 6 Nov 2026 21:10:23 +0000
-Subject: [PATCH 07/35] feat(hybrid): relay Kyty's window input to the host pad
+Subject: [PATCH 07/42] feat(hybrid): relay Kyty's window input to the host pad
  library (milestone 3)
 
 Kyty owns the window, so it reads the keyboard and the gamepads; a relay
@@ -18,7 +18,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  3 files changed, 85 insertions(+), 2 deletions(-)
 
 diff --git a/src/hybrid/kytyGpuApi.h b/src/hybrid/kytyGpuApi.h
-index a1a8d609..13db78a9 100644
+index e1ae13ec..bf7a8d0c 100644
 --- a/src/hybrid/kytyGpuApi.h
 +++ b/src/hybrid/kytyGpuApi.h
 @@ -21,7 +21,7 @@ extern "C" {
@@ -76,7 +76,7 @@ index a1a8d609..13db78a9 100644
  static_assert(offsetof(KytyGpuPacket, dw_num) == 8, "KytyGpuPacket layout");
  static_assert(offsetof(KytyGpuPacket, flags) == 12, "KytyGpuPacket layout");
 diff --git a/src/hybrid/kytyGpuBridge.cpp b/src/hybrid/kytyGpuBridge.cpp
-index 68eb5862..5d8208f6 100644
+index b241bbf0..a7d4f877 100644
 --- a/src/hybrid/kytyGpuBridge.cpp
 +++ b/src/hybrid/kytyGpuBridge.cpp
 @@ -29,6 +29,7 @@
@@ -138,7 +138,7 @@ index 68eb5862..5d8208f6 100644
 +}
 +
  bool StartProxy() {
- 	if (EventQueue::KernelCreateEqueue(&g_proxy, "AstroHybridProxy") != 0 ||
+ 	if (EventQueue::KernelCreateEqueue(&g_proxy, "AkiBotProxy") != 0 ||
  	    EventQueue::KernelAddUserEvent(g_proxy, ProxyWakeId) != 0) {
 @@ -224,6 +271,14 @@ bool StartProxy() {
  	return true;
@@ -174,7 +174,7 @@ index 68eb5862..5d8208f6 100644
  	if (g_renderer_thread.joinable()) {
  		g_renderer_thread.join();
 diff --git a/tests/hybrid/kytyGpuTestHost.c b/tests/hybrid/kytyGpuTestHost.c
-index 7c3a2e42..b715921a 100644
+index 47d96702..725795db 100644
 --- a/tests/hybrid/kytyGpuTestHost.c
 +++ b/tests/hybrid/kytyGpuTestHost.c
 @@ -43,7 +43,7 @@ static void HostDeliver(void* user, uint32_t kind, int64_t ident, uint64_t data)
@@ -185,7 +185,7 @@ index 7c3a2e42..b715921a 100644
 +    sizeof(KytyGpuHostCallbacks), KYTY_GPU_ABI_VERSION, NULL, HostLog, HostAdd, HostDelete, HostDeliver, NULL, NULL, NULL, NULL,
  };
  
- __declspec(dllexport) const KytyGpuHostCallbacks* AstroHybridHostCallbacks_nid_no_patch(void) {
+ __declspec(dllexport) const KytyGpuHostCallbacks* AkiBotHostCallbacks_nid_no_patch(void) {
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

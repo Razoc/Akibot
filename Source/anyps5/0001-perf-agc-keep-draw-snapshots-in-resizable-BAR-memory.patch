@@ -1,7 +1,7 @@
-From b951663db6d94c914ded13a5f41ef33b57087f9a Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Wed, 28 Oct 2026 21:05:53 +0000
-Subject: [PATCH 01/26] perf(agc): keep draw snapshots in resizable BAR memory
+Subject: [PATCH 01/27] perf(agc): keep draw snapshots in resizable BAR memory
  (PR #9712 applied locally)
 
 ---
@@ -539,5 +539,5 @@ index 05678c738d..7fdf700a1a 100644
  | `APS5_NO_BDA_TABLE_CACHE` | presence | `core/libs/prx/libSceAgcDriver/Graphics/src/BdaResources.cpp` |  | builds every BDA descriptor table instead of reusing the recent-table cache |
  | `APS5_NO_BLOCK_TRACKING` | presence | `core/libs/prx/libSceAgcDriver/Graphics/src/Texture.cpp` |  | tracks array layers, or the whole surface, instead of 64 KiB blocks |
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

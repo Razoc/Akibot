@@ -27,7 +27,7 @@ Re-run only stages 4–6 after changing nothing in AnyPS5: `Tools\build.ps1 -Ski
 After editing AnyPS5 libraries: `cmake --build Build\anyps5 --target libs --parallel`, then the
 `-SkipToolchain -SkipBuild` run to recopy them.
 
-Run: `Run-AstroBot.bat` (logs to `Logs/last-run.*.log`), or the test harness:
+Run: `AkiBot.exe --run` (logs to `Logs/hybrid-run.*.log`), or the test harness:
 `powershell -File Tests\run_test.ps1 -Seconds 420 -Env @{APS5_HOST_IMPORT_MIB='11264'}`.
 The harness saves stdout/stderr, periodic window screenshots and the exit code under `Logs/run-<time>/`;
 `-Trigger 'StartLevel title' -Keys @('45:0x0D')` presses Return 45 s after the title loads (only when the

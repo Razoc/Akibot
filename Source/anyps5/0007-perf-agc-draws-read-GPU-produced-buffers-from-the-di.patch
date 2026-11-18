@@ -1,7 +1,7 @@
-From ba6970d6f62ddaa12bfce8db819fc7a5864edf71 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Thu, 29 Oct 2026 19:49:21 +0000
-Subject: [PATCH 07/26] perf(agc): draws read GPU-produced buffers from the
+Subject: [PATCH 07/27] perf(agc): draws read GPU-produced buffers from the
  dispatch's device-local shadow
 
 APS5_DRAW_READ_SHADOWS=1: the GPU-produced range registry now keeps the staged region's device-local
@@ -213,5 +213,5 @@ index 9ebfe46e10..5d5f3d7aa7 100644
  | `APS5_DRAW_SNAPSHOT_MAX_MIB` | integer | `core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp` | 64 | upper bound in MiB on the snapshot bytes a draw's bindings may take |
  | `APS5_DRAW_TRANSITIONS` | presence | `core/libs/prx/libSceAgcDriver/Graphics/src/Draw.cpp` |  | keeps the per-draw upload and download barriers and layout transitions instead of the lean recorded path |
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

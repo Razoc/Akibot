@@ -1,4 +1,4 @@
-# AstroHybrid: native AstroBot.exe with Kyty's GPU stack
+# AkiBot: native AstroBot.exe with Kyty's GPU stack
 
 Written 2026-11-06 from measurements, not assumptions. Goal: 30 FPS, then 60, in Sky Garden and on the world map,
 still launched as `Build\Run\AstroBot.exe` (no emulator application).
@@ -7,7 +7,7 @@ still launched as `Build\Run\AstroBot.exe` (no emulator application).
 
 Sky Garden steady scene (60-80k draws per 10 s), RTX 5060 8 GB, Ryzen 5 5500:
 
-| | AnyPS5 (patches 0001-0020) | Kyty int21 (`E:\AstroHybrid-Work\reports\BASELINE-AND-BOTTLENECKS.md`) |
+| | AnyPS5 (patches 0001-0020) | Kyty int21 (`E:\AkiBot-Work\reports\BASELINE-AND-BOTTLENECKS.md`) |
 |---|---|---|
 | FPS | 1.2-1.3 (`run-20261106-192631`, `194423`) | 29.2 |
 | GPU | 651 ms busy per frame | 68% busy at 29 FPS, about 23 ms per frame |
@@ -33,7 +33,7 @@ Conclusions:
 AstroBot.exe (AnyPS5 relinked game, unchanged)
  |-- AnyPS5 native libs: libkernel, libc, fs, pad, audio, save data, net ...   (kept)
  |-- libSceAgc / libSceAgcDriver / libSceVideoOut                              (replaced, switch APS5_KYTY_GPU)
-       \-- kyty_gpu.dll (built from E:\AstroHybrid-Work\source\kyty with clang-cl)
+       \-- kyty_gpu.dll (built from E:\AkiBot-Work\source\kyty with clang-cl)
              Kyty graphics/ (guest_gpu CP, host_gpu renderer, shader recompiler, presentation)
              Kyty libs/agc.cpp + videoOut HLE, exported by NID
              host adapter: memory mappings, event queues, threads -> callbacks into AnyPS5 libkernel
@@ -66,13 +66,13 @@ What Kyty's graphics needs from outside itself (include scan of `src/graphics`):
 ## 3. Milestones (each one ends in a test, the previous build stays the default)
 
 1. **Done 2026-11-06 (Kyty `hybrid` `df8580c2`, details and blockers in `Docs/HYBRID_M1_EXPORTS.md`).**
-   **kyty_gpu.dll builds.** New CMake target in a copy of the Kyty tree (`E:\AstroHybrid-Work\source\kyty`,
+   **kyty_gpu.dll builds.** New CMake target in a copy of the Kyty tree (`E:\AkiBot-Work\source\kyty`,
    branch `hybrid`): `common` + `graphics` + `libs/agc` + video out + a stub adapter. Done = the DLL links and
    exports the Agc, AgcDriver and VideoOut NIDs (`dumpbin /exports` compared with AnyPS5's prx export lists).
-2. **Done 2026-11-06 (Kyty `hybrid` `036147c8`, AnyPS5 `7afc16282`, patch 0021).** `Run-AstroHybrid.bat` runs
+2. **Done 2026-11-06 (Kyty `hybrid` `036147c8`, AnyPS5 `7afc16282`, patch 0021).** `Run-AkiBot.bat` runs
    `Build\RunHybrid` (built by `python -I Tools\hybrid\make_run_hybrid.py`): the same AstroBot.exe and prx files
    (hard links), fresh libc/libkernel, forwarder DLLs for libSceAgc/libSceAgcDriver/libSceVideoOut that resolve every
-   NID to kyty_gpu.dll, and `astrohybrid_host.dll` (AnyPS5's libAstroHybridHost). The first graphics or memory call
+   NID to kyty_gpu.dll, and `akibot_host.dll` (AnyPS5's libAkiBotHost). The first graphics or memory call
    starts Kyty's renderer in-process; AnyPS5's guest arena hands Kyty placeholder ranges (0x200000000-0x7ffff0000,
    0x0fe0000000 + 512 MiB, 64 GiB at 0xec00000000) and libkernel forwards the game's direct and flexible memory calls
    (`APS5_GPU_ENGINE=kyty`); Kyty's write-tracking fault handler runs first-chance; EOP and flip events reach the
@@ -92,8 +92,8 @@ What Kyty's graphics needs from outside itself (include scan of `src/graphics`):
 
 - Never modify `Game\` or `E:\PPSA21567`; keep 30 GB free on C:; no pushes; commit locally only.
 - `APS5_KYTY_GPU` stays off by default until milestone 4 shows a measured gain with correct screenshots.
-- Kyty's source in `E:\AstroHybrid-Work\source\kyty` is reused on a new branch; the original Kyty builds and
-  caches under `E:\AstroHybrid-Work\build` and the launcher in `E:\AstroBotPC` stay untouched.
+- Kyty's source in `E:\AkiBot-Work\source\kyty` is reused on a new branch; the original Kyty builds and
+  caches under `E:\AkiBot-Work\build` and the launcher in `E:\AstroBotPC` stay untouched.
 - First run after deploying a new driver binary is cold (shader disk cache): warm up once before any A/B.
 
 ## 5. Descriptor offset audit (2026-11-08)
@@ -146,19 +146,19 @@ Isolated diagnostic DLL SHA-256 `667a61c1af5c6b8edd9461f08932142222ec6f8c6cff41a
 
 ## 8. Persistent graphics caches in the hybrid
 
-Kyty's cache initialization asked its standalone loader for a title ID. AstroHybrid starts the renderer directly and does not initialize that metadata. The copied `_PipelineCache` files were ignored, including after a graceful window close. As a result, a restart could compile the same expensive shader again.
+Kyty's cache initialization asked its standalone loader for a title ID. AkiBot starts the renderer directly and does not initialize that metadata. The copied `_PipelineCache` files were ignored, including after a graceful window close. As a result, a restart could compile the same expensive shader again.
 
-Patch 0006 accepts `ASTROHYBRID_CACHE_TITLE_ID=PPSA21567` when standalone metadata is absent. The value must be a PS5 title ID in the form `PPSA` followed by five digits. It supplies the cache filename only. File identities, device/driver validation, shader specialization keys and the game's file access are handled by the existing paths. The driver cache, program cache, shader journal and pipeline journal now use the title under the working directory's `_PipelineCache`. The feature remains opt-in.
+Patch 0006 accepts `AKIBOT_CACHE_TITLE_ID=PPSA21567` when standalone metadata is absent. The value must be a PS5 title ID in the form `PPSA` followed by five digits. It supplies the cache filename only. File identities, device/driver validation, shader specialization keys and the game's file access are handled by the existing paths. The driver cache, program cache, shader journal and pipeline journal now use the title under the working directory's `_PipelineCache`. The feature remains opt-in.
 
-The benchmark harness accepts `ASTROHYBRID_BENCH_GRACEFUL_EXIT=1` and requests window close after the measured window. It waits up to 15 seconds before falling back to termination. Kyty saves caches on its normal window-close path. Reproduce using `Tests/hybrid_skygarden.ps1 -RunDir Build/RunHybridCacheTitle -Seconds 120 -Shots 6` and pass both settings in `-Env`. Use a dedicated runtime and the pinned save. Keep the first cache-enabled launch separate from warm measurements.
+The benchmark harness accepts `AKIBOT_BENCH_GRACEFUL_EXIT=1` and requests window close after the measured window. It waits up to 15 seconds before falling back to termination. Kyty saves caches on its normal window-close path. Reproduce using `Tests/hybrid_skygarden.ps1 -RunDir Build/RunHybridCacheTitle -Seconds 120 -Shots 6` and pass both settings in `-Env`. Use a dedicated runtime and the pinned save. Keep the first cache-enabled launch separate from warm measurements.
 
-For gameplay, launch `Run-AstroHybrid-NonRT-Cached.bat`. It selects the measured NonRT renderer and turns on persistent graphics caches in the regular `Build/RunHybrid` runtime. Exit the game normally to save newly compiled shaders. Reassembly requires a Kyty DLL built with patch 0006 or later to use the cached launcher.
+For gameplay, launch `Run-AkiBot-NonRT-Cached.bat`. It selects the measured NonRT renderer and turns on persistent graphics caches in the regular `Build/RunHybrid` runtime. Exit the game normally to save newly compiled shaders. Reassembly requires a Kyty DLL built with patch 0006 or later to use the cached launcher.
 
 ### Frame-rate settings
 
-`Run-AstroHybrid-FPS.bat` starts the cached NonRT build with a 30 FPS ceiling. In the game window, press **Ctrl+F2** to change the ceiling to 60 FPS, 120 FPS, No limit, and then back to 30 FPS. **F2** shows or hides the overlay. The window title also shows the current ceiling. The selection lasts for the session. Reassembly requires Kyty patch 0007 or later for the limiter.
+`Run-AkiBot-FPS.bat` starts the cached NonRT build with a 30 FPS ceiling. In the game window, press **Ctrl+F2** to change the ceiling to 60 FPS, 120 FPS, No limit, and then back to 30 FPS. **F2** shows or hides the overlay. The window title also shows the current ceiling. The selection lasts for the session. Reassembly requires Kyty patch 0007 or later for the limiter.
 
-Set `ASTROHYBRID_FPS_LIMIT` to `30`, `60`, `120`, or `unlimited` before launch to choose a starting value. With the variable unset, the regular launchers keep their previous presentation behavior. The limiter spaces guest flips while keeping the game's virtual vblank clock at its configured rate. No limit removes the AstroHybrid ceiling. Game performance, guest pacing and display presentation can still constrain FPS.
+Set `AKIBOT_FPS_LIMIT` to `30`, `60`, `120`, or `unlimited` before launch to choose a starting value. With the variable unset, the regular launchers keep their previous presentation behavior. The limiter spaces guest flips while keeping the game's virtual vblank clock at its configured rate. No limit removes the AkiBot ceiling. Game performance, guest pacing and display presentation can still constrain FPS.
 
 The empty-cache run wrote 333 shader sources, 345 permutations and 405 pipeline journal records. In the 65-105 s window after first present, the same-DLL cache-off control had a 103.71 ms worst frame and six late program compiles. The two warm runs had 54.75 and 50.48 ms worst frames and zero late program compiles. The control spent 58.59 ms in recorded compile waits, versus 0.38 and 0.41 ms in the warm runs. These measurements cover the pinned Sky Garden scene with tracing active. Ordinary late p99 remained about 42-45 ms. The data supports keeping the opt-in cache fix for long compile-related spikes. Sustained throughput still depends on draw commit and command supply to the GPU.
 

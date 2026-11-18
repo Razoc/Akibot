@@ -4,7 +4,7 @@ Date: Thu, 12 Nov 2026 19:56:22 +0000
 Subject: [PATCH] feat(hybrid): carry the read memo's cross-epoch proof by its
  signature
 
-With ASTROHYBRID_COMMIT_EPOCH_FASTPATH, a cached read memo whose locked
+With AKIBOT_COMMIT_EPOCH_FASTPATH, a cached read memo whose locked
 cross-epoch check passed is marked clean; later epochs accept it while
 the range signature is unchanged instead of taking the region locks
 again. verify runs the locked query for every such acceptance.
@@ -49,7 +49,7 @@ index ccec8ed9..13dabc7b 100644
 -			        QueryUploadSnapshot(m_memory_tracker, vaddr, size, relaxed, cpu_only) &&
 -			        !relaxed.cpu && !m_memory_tracker.IsRegionCpuModified(vaddr, size) &&
 -			        m_memory_tracker.RangeSignature(vaddr, size) == before;
-+			// ASTROHYBRID_COMMIT_EPOCH_FASTPATH (BindingMemo::clean): the signature equals
++			// AKIBOT_COMMIT_EPOCH_FASTPATH (BindingMemo::clean): the signature equals
 +			// memo.signature (checked above), under which the locked query below once passed.
 +			const bool fast = !stream && m_binding_memo_cross && memo.clean &&
 +			                  m_written_epoch_mode != 0;
@@ -98,7 +98,7 @@ index 1ce38202..6c2192a7 100644
  		uint64_t        vaddr     = 0;
  		uint32_t        size      = 0;
  		BindingMemoKind kind      = BindingMemoKind::Empty;
-+		// ASTROHYBRID_COMMIT_EPOCH_FASTPATH: a cached memo recorded while no page of the range
++		// AKIBOT_COMMIT_EPOCH_FASTPATH: a cached memo recorded while no page of the range
 +		// was CPU-dirty or hot, with `signature` read before and after that check. While the
 +		// signature still holds no page has turned CPU-dirty since (every such transition advances
 +		// a region serial first), which is what the cross-epoch locked query establishes, so a

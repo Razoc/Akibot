@@ -1,7 +1,7 @@
-From af0d13df2a6f7842ad6b630d361cd4534899c145 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Thu, 29 Oct 2026 20:41:42 +0000
-Subject: [PATCH 08/26] perf(agc): GPU copy-ins read the producing dispatch's
+Subject: [PATCH 08/27] perf(agc): GPU copy-ins read the producing dispatch's
  video-memory shadow
 
 APS5_COPY_IN_FROM_SHADOWS=1: recordGpuCopies looks the region up in the GPU-produced range registry
@@ -123,5 +123,5 @@ index 5d5f3d7aa7..0cb64b041d 100644
  | `APS5_COPY_SYNC` | presence | `core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp` |  | treats any pending writer over a copy's range as needing a wait |
  | `APS5_COPY_VERIFY` | presence | `core/libs/prx/libSceAgcDriver/Execution/src/VulkanDevice.cpp` |  | verifies a CPU copy's source and destination bytes against the pre-copy values after a sync |
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

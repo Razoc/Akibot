@@ -1,7 +1,7 @@
-From 036147c8c123a8c095f44fcfd8079dbea8e9f68e Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Fri, 6 Nov 2026 20:55:23 +0000
-Subject: [PATCH 06/35] feat(hybrid): Kyty's renderer runs Astro Bot inside
+Subject: [PATCH 06/42] feat(hybrid): Kyty's renderer runs Astro Bot inside
  AstroBot.exe (milestone 2)
 
 - Memory: AnyPS5's guest arena hands Kyty placeholder ranges (the PS5
@@ -35,7 +35,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  9 files changed, 157 insertions(+), 41 deletions(-)
 
 diff --git a/src/hybrid/kytyGpuApi.h b/src/hybrid/kytyGpuApi.h
-index b62835a0..a1a8d609 100644
+index 68348496..e1ae13ec 100644
 --- a/src/hybrid/kytyGpuApi.h
 +++ b/src/hybrid/kytyGpuApi.h
 @@ -95,7 +95,10 @@ typedef struct KytyGpuHostCallbacks {
@@ -51,7 +51,7 @@ index b62835a0..a1a8d609 100644
  } KytyGpuHostCallbacks;
  
 diff --git a/src/hybrid/kytyGpuBridge.cpp b/src/hybrid/kytyGpuBridge.cpp
-index e9b970a7..68eb5862 100644
+index 5877e54b..b241bbf0 100644
 --- a/src/hybrid/kytyGpuBridge.cpp
 +++ b/src/hybrid/kytyGpuBridge.cpp
 @@ -15,6 +15,8 @@
@@ -288,14 +288,14 @@ index 793d95ce..6ea7c176 100644
  	g_flexible_memory_size_frozen = true;
  	VirtualMemory::Init();
 diff --git a/src/kernel/memory.h b/src/kernel/memory.h
-index 870484b7..d22ef90a 100644
+index 870484b7..be677121 100644
 --- a/src/kernel/memory.h
 +++ b/src/kernel/memory.h
 @@ -13,6 +13,11 @@ enum class PageFaultAccess;
  namespace Libs::LibKernel::Memory {
  
  void Initialize();
-+// AstroHybrid: placeholder ranges another owner of the process's guest address space (AnyPS5's
++// AkiBot: placeholder ranges another owner of the process's guest address space (AnyPS5's
 +// guest arena in AstroBot.exe) hands over before Initialize. They are adopted as owned free space
 +// as they are, never released to MEM_FREE (where unrelated allocations could land first), and left
 +// to that owner at teardown.
@@ -380,7 +380,7 @@ index afd7f505..1b032f91 100644
      response = out / "kyty_gpu.link.rsp"
      lines = ["/NOLOGO", "/DLL", "/MACHINE:X64", "/INCREMENTAL:NO", "/DEBUG:FULL", "/OPT:REF", "/OPT:ICF",
 diff --git a/tools/hybrid/gen_kyty_gpu_exports.py b/tools/hybrid/gen_kyty_gpu_exports.py
-index aebda5e2..0522828e 100644
+index 95f4b17e..bc3c3757 100644
 --- a/tools/hybrid/gen_kyty_gpu_exports.py
 +++ b/tools/hybrid/gen_kyty_gpu_exports.py
 @@ -5,7 +5,8 @@ imports it from) and Kyty's HLE registrations (LIB_FUNC lines in src/libs). Outp
@@ -422,5 +422,5 @@ index aebda5e2..0522828e 100644
          imported[library] |= nids
      kyty = kyty_functions()
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

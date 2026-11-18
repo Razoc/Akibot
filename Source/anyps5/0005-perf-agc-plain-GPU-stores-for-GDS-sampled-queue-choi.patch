@@ -1,7 +1,7 @@
-From 2619231e9f817464cd5c70a20c1ba0c9a697f3c2 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Thu, 29 Oct 2026 18:59:02 +0000
-Subject: [PATCH 05/26] perf(agc): plain GPU stores for GDS, sampled queue
+Subject: [PATCH 05/27] perf(agc): plain GPU stores for GDS, sampled queue
  choice, CPU write-back sync counter
 
 APS5_GDS_PLAIN_STORES=1 (with APS5_GDS_GPU_STORES) records a DMA_DATA store into GDS through the new
@@ -188,5 +188,5 @@ index 01f8f9c418..f9e13d4ff7 100644
  | `APS5_SHADOW_VERIFY` | presence | `core/libs/prx/libSceAgcDriver/Graphics/src/UnitShadow.cpp` |  | verifies that the shadow-published bytes equal the guest bytes |
  | `APS5_SHARED_COLLECT_MEMO` | presence | `core/libs/prx/libSceAgcDriver/Execution/src/GuestMemory.cpp` |  | uses the tracker's shared collect-memo ring under its mutex instead of the per-thread ring |
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

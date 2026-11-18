@@ -1,7 +1,7 @@
-# Akibot
+# AkiBot
 
-Fork personnel d'[AstroHybrid](https://github.com/imnotsharingmyname/pcportastrobot), le portage PC natif
-d'**Astro Bot** (PS5). Le but d'Akibot : **plus de FPS, moins de saccades** et des réglages adaptés, en
+Fork personnel du [portage PC natif d'**Astro Bot**](https://github.com/imnotsharingmyname/pcportastrobot)
+(PS5) par imnotsharingmyname. Le but d'AkiBot : **plus de FPS, moins de saccades** et des réglages adaptés, en
 travaillant sur la couche de traduction (CPU et GPU), jamais sur le jeu lui-même.
 
 > [!IMPORTANT]
@@ -11,19 +11,35 @@ travaillant sur la couche de traduction (CPU et GPU), jamais sur le jeu lui-mêm
 
 ## État actuel
 
-Version **0.2.0** : nouveau lanceur Akibot.
+Version **0.3.0** : premier runtime 100 % AkiBot, DLSS / FSR / génération d'images et menu en jeu.
 
-- Fenêtre **1280×720** épurée : tout tient sans défilement, sans infos techniques inutiles.
-- Bouton **Jouer** toujours visible, réglages en deux colonnes, explications dans les bulles d'aide (ⓘ).
-- Installation en un seul exe, français/anglais, mises à jour automatiques.
+- **Menu en jeu** (F1 ou Échap, manette comprise) avec toutes les options du lanceur. Limite de FPS, compteur,
+  plein écran et vitesse du jeu changent en direct ; le reste est enregistré pour le prochain lancement (« * »).
+- **DLSS** (Qualité, Équilibré, Performance, Ultra Performance, DLAA) et **génération d'images NVIDIA** (×2 à ×4)
+  qui marchent maintenant aussi sur la **v01.007.000** (passe d'upscale de cette version retrouvée).
+- **AMD FSR 3.1** (mise à l'échelle) et **génération d'images AMD FSR 3** (×2), sur toutes les cartes.
+- Le compteur de FPS compte les images générées (NVIDIA et AMD).
+- **Runtime AkiBot** : `kyty_gpu.dll` recompilée avec Streamline et FidelityFX, module hôte AnyPS5 au nom
+  d'AkiBot. Les autres bibliothèques PS5 restent celles d'origine (elles contiennent des correctifs absents des
+  sources publiées).
+- **Plus aucun .bat** : AkiBot.exe démarre le jeu lui-même. Les installations 0.1.x / 0.2.x sont migrées
+  automatiquement au premier démarrage (raccourcis et anciens scripts compris).
+- Journal de lancement `Logs\akibot-launch.log` (options passées au jeu) pour comparer un lancement qui plante.
 
-Le moteur est pour l'instant **identique à AstroHybrid 1.2.1**. `kyty_gpu.dll` se recompile maintenant depuis
-les sources avec les mêmes performances que la release (voir [Compiler](#compiler-kyty_gpudll)) : les
-optimisations Akibot arriveront ici au fur et à mesure, avec des mesures avant/après.
+| Sky Garden, 1440p (9800X3D + RTX 5070) | FPS du jeu | FPS à l'écran |
+|---|---|---|
+| Natif | ~59 | ~59 |
+| DLSS + génération NVIDIA ×4 | ~39 | ~156 |
+| FSR 3.1 + génération AMD ×2 | ~58 | ~116 |
+
+> [!WARNING]
+> Sur la **v01.007.000**, un plantage aléatoire rare (environ 1 lancement sur 15, au chargement d'un niveau)
+> existe depuis le début, sans lien avec AkiBot 0.3.0. Relancer suffit. La solution durable est la mise à jour
+> 01.019.000 du jeu.
 
 <p align="center">
-  <img src="docs/screenshots/akibot-accueil.png" width="49%" alt="Lanceur Akibot : accueil"/>
-  <img src="docs/screenshots/akibot-graphismes.png" width="49%" alt="Lanceur Akibot : graphismes"/>
+  <img src="docs/screenshots/akibot-accueil.png" width="49%" alt="Lanceur AkiBot : accueil"/>
+  <img src="docs/screenshots/akibot-graphismes.png" width="49%" alt="Lanceur AkiBot : graphismes"/>
 </p>
 
 ### Testé sur
@@ -42,7 +58,7 @@ optimisations Akibot arriveront ici au fur et à mesure, avec des mesures avant/
 |---|---|
 | Validation et setup du dump | ✅ accepté, `AstroBot.exe` construit sans erreur |
 | Lancement | ✅ démarre, image correcte, 60 FPS dans l'intro |
-| Fin du tutoriel (passage vers l'espace) | ✅ depuis Akibot 0.1.1 (surveillance des écritures mémoire coupée automatiquement ; avant : écran noir ou plantage) |
+| Fin du tutoriel (passage vers l'espace) | ✅ depuis AkiBot 0.1.1 (surveillance des écritures mémoire coupée automatiquement ; avant : écran noir ou plantage) |
 | Manette sans gyroscope (Xbox) | ✅ View/Back puis stick droit pour incliner |
 | Vitesse temps réel | ✅ |
 | Ultrawide 21:9 / 32:9 | ✅ |
@@ -58,39 +74,41 @@ d'images, sans limite de FPS, éclairage d'origine. FPS relevé chaque seconde p
 
 | Essai | Moyenne | Médiane | Pire seconde | Secondes sous 50 FPS |
 |---|---|---|---|---|
-| Akibot 0.1.1 (correctif actif), cache froid | 63,6 | 65 | 15 | 2 |
+| AkiBot 0.1.1 (correctif actif), cache froid | 63,6 | 65 | 15 | 2 |
 | Sans le correctif (`APS5_NO_WRITE_WATCH=0`) | 61,5 | 64 | 0 | 7 |
-| Akibot 0.1.1 (correctif actif), cache chaud | 61,9 | 63 | 42 | 3 |
+| AkiBot 0.1.1 (correctif actif), cache chaud | 61,9 | 63 | 42 | 3 |
 
 **~62 FPS de moyenne** sur Ryzen 7 9800X3D + RTX 5070 (l'amont mesure 32-34 FPS au même endroit avec un
 Ryzen 5 5500 + RTX 5060). Le correctif 0.1.1 ne coûte pas de FPS. Le jeu reste limité par le CPU (préparation des
 draws sur un seul thread, plafond ~70 FPS) : c'est la cible des optimisations à venir.
 
-`kyty_gpu.dll` recompilée par Akibot contre celle de la release, mesurées l'une après l'autre dans la même
+`kyty_gpu.dll` recompilée par AkiBot contre celle de la release, mesurées l'une après l'autre dans la même
 séance : **58,5 contre 58,3 FPS** de moyenne (1 % bas 56 contre 55). Performances identiques ; l'écart avec les
 ~62 FPS ci-dessus vient de l'état du PC ce jour-là. Toujours comparer deux versions dans la même séance.
 
-Pour refaire la mesure sur ton PC : `powershell -ExecutionPolicy Bypass -File Tools\akibot\bench_level.ps1 -InstallDir C:\Akibot`
+Pour refaire la mesure sur ton PC : `powershell -ExecutionPolicy Bypass -File Tools\akibot\bench_level.ps1 -InstallDir C:\AkiBot`
 (le jeu s'ouvre et se ferme tout seul ; résultat dans la console et un CSV à côté du script).
 
 ## Jouer
 
-1. Télécharge **Akibot.exe** depuis la [dernière release](https://github.com/Razoc/Akibot/releases/latest)
+1. Télécharge **AkiBot.exe** depuis la [dernière release](https://github.com/Razoc/AkiBot/releases/latest)
    (un seul fichier, environ 1,4 Mo).
-2. Lance-le. Choisis la langue et le dossier d'installation (par exemple `C:\Akibot`, hors OneDrive, environ
-   3 Go libres). Akibot télécharge le runtime (190 Mo) et vérifie son empreinte SHA-256.
+2. Lance-le. Choisis la langue et le dossier d'installation (par exemple `C:\AkiBot`, hors OneDrive, environ
+   3 Go libres). AkiBot télécharge le runtime AkiBot (192 Mo) et vérifie son empreinte SHA-256.
 3. Indique le dossier de ton dump (celui qui contient `eboot.bin`, `sce_module` et `sce_sys`). La conversion
    prend environ une minute ; ton dump n'est jamais modifié.
 4. Règle les graphismes et la manette si tu veux, puis appuie sur **Jouer** (en bas à gauche).
 
-Akibot vérifie les nouvelles versions à chaque démarrage et se met à jour tout seul. Windows SmartScreen peut
+AkiBot vérifie les nouvelles versions à chaque démarrage et se met à jour tout seul (la 0.2.0 propose
+la 0.3.0, qui installe ensuite son nouveau runtime). Windows SmartScreen peut
 avertir au premier lancement (exe non signé) : « Informations complémentaires » puis « Exécuter quand même ».
 
-Sans fenêtre : `Akibot.exe --install "<dossier>"`, puis `Akibot.exe --setup "<dossier du dump>"` depuis le
-dossier d'installation.
+Sans fenêtre : `AkiBot.exe --install "<dossier>"`, puis `AkiBot.exe --setup "<dossier du dump>"` depuis le
+dossier d'installation. `AkiBot.exe --play` lance le jeu avec les réglages enregistrés ;
+`AkiBot.exe --run <arguments>` le lance avec ses propres arguments (ex. `-lvl underwater_aerial_garden`).
 
-> English: download **Akibot.exe** from the latest release, run it, pick a language and an install folder,
-> then point it at your own Astro Bot dump. Akibot updates itself.
+> English: download **AkiBot.exe** from the latest release, run it, pick a language and an install folder,
+> then point it at your own Astro Bot dump. AkiBot updates itself.
 
 ## Compiler `kyty_gpu.dll`
 
@@ -103,15 +121,17 @@ cd kyty
 git config core.autocrlf false
 git checkout u59-windows-20261024-int21
 git submodule update --init --recursive
-git am --keep-cr ..\Akibot\Source\kyty-hybrid\*.patch
-..\Akibot\Tools\hybrid\build-kyty-pgo.cmd
+git am --keep-cr ..\AkiBot\Source\kyty-hybrid\*.patch
+powershell -ExecutionPolicy Bypass -File ..\AkiBot\Tools\hybrid\build-kyty-pgo.ps1
 ```
 
-- Place `kyty` à côté du dépôt Akibot (le script cherche `..\kyty`) ou indique `KYTY_SRC`. Résultat :
+- Place `kyty` à côté du dépôt AkiBot (le script cherche `..\kyty`) ou indique `KYTY_SRC`. Résultat :
   `..\kyty-gpu\kyty_gpu.dll`, en environ 3 min sur un 9800X3D.
-- `core.autocrlf false` est obligatoire : sinon les patchs ne s'appliquent pas. Si ton clone d'Akibot a été fait
+- `core.autocrlf false` est obligatoire : sinon les patchs ne s'appliquent pas. Si ton clone d'AkiBot a été fait
   avec `autocrlf true`, applique les patchs tirés de Git (`git show HEAD:Source/kyty-hybrid/<patch>`).
-- Sans `KYTY_STREAMLINE_DIR` (SDK Streamline 2.14.16), la DLL est construite sans DLSS ni génération d'images.
+- Sans `KYTY_STREAMLINE_DIR` (SDK Streamline 2.14.16), la DLL est construite sans DLSS ni génération d'images
+  NVIDIA ; sans `KYTY_FFX_DIR` (AMD FidelityFX SDK 1.1.4), sans FSR.
+- Paquet runtime complet : `powershell -ExecutionPolicy Bypass -File Tools\release\make_runtime.ps1 -Version 0.3.0`.
 - Pour tester : garde une copie de `Build\RunHybrid\kyty_gpu.dll`, remplace-la, mesure avec `bench_level.ps1`.
 
 ## Feuille de route
@@ -119,7 +139,10 @@ git am --keep-cr ..\Akibot\Source\kyty-hybrid\*.patch
 - [x] Mesurer une base de FPS fiable dans Sky Garden (~62 FPS en 1440p natif, voir plus haut). Autres niveaux à faire.
 - [x] Lanceur refait : fenêtre 1280×720 épurée (0.2.0).
 - [x] Compiler `kyty_gpu.dll` depuis les sources et retrouver les perfs de la release.
-- [ ] Compiler `kyty_gpu.dll` avec Streamline (DLSS et génération d'images) et AnyPS5 depuis les sources.
+- [x] Compiler `kyty_gpu.dll` avec Streamline et FidelityFX ; runtime AkiBot (0.3.0).
+- [x] DLSS et génération d'images NVIDIA sur la v01.007.000 ; AMD FSR 3.1 et génération d'images AMD (0.3.0).
+- [x] Menu en jeu F1 / Échap (0.3.0).
+- [ ] Comprendre pourquoi la génération NVIDIA ×4 fait tomber le jeu de ~59 à ~39 FPS.
 - [ ] Profiler le « draw commit » du command processor (~22 ms par image sur un seul thread CPU, ~4 900 draws
       par image) et chercher des gains.
 - [ ] Porter l'éclairage rapide et le soft-assert sur la v01.007.000.
@@ -131,7 +154,7 @@ Les idées, mesures et pull requests sont les bienvenues :
 
 - Ouvre une issue avec ta config (CPU, GPU, RAM, pilote), la version de ton dump (`sce_sys/param.json` →
   `titleId` et `contentVersion`) et ce que tu as mesuré.
-- Joins les logs (`Logs\setup.log`, `Logs\hybrid-run.err.log`) **après avoir retiré tes chemins perso**.
+- Joins les logs (`Logs\setup.log`, `Logs\akibot-launch.log`, `Logs\hybrid-run.err.log`) **après avoir retiré tes chemins perso**.
 - Ne publie **jamais** de fichier du jeu, ni `AstroBot.exe`, ni le dossier `Build\` : c'est du code du jeu
   converti.
 
@@ -139,14 +162,15 @@ Les améliorations utiles à tous seront aussi proposées au projet d'origine.
 
 ## Crédits
 
-Akibot n'existe que grâce à ces projets :
+AkiBot n'existe que grâce à ces projets :
 
-- **[AstroHybrid](https://github.com/imnotsharingmyname/pcportastrobot)** (imnotsharingmyname) : le portage
-  dont ce dépôt est un fork. Son README d'origine (en anglais) est dans [Docs/README-amont.md](Docs/README-amont.md).
+- **[pcportastrobot](https://github.com/imnotsharingmyname/pcportastrobot)** (imnotsharingmyname) : le
+  portage dont ce dépôt est un fork. Son README d'origine (en anglais) est dans [Docs/README-amont.md](Docs/README-amont.md).
 - **AnyPS5** (boykopovar) : convertit le code x86-64 du jeu en exécutable Windows et réimplémente les
   bibliothèques système PS5.
 - **KytyPS5 / Kyty** : la pile GPU traduite vers Vulkan (`kyty_gpu.dll`).
 - **NVIDIA Streamline** : DLSS, Frame Generation et Reflex.
+- **AMD FidelityFX SDK** (licence MIT) : FSR 3.1 et génération d'images FSR 3.
 
 Astro Bot est une marque de Sony Interactive Entertainment. Ce projet n'est ni affilié à Sony ni approuvé par
 Sony.

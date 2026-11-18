@@ -1,9 +1,9 @@
-# Mesure de FPS dans un niveau, sans jouer : lance le jeu installé par Akibot directement dans le niveau
+﻿# Mesure de FPS dans un niveau, sans jouer : lance le jeu installé par AkiBot directement dans le niveau
 # (-lvl), lit chaque seconde le FPS du titre de la fenêtre, ne garde que les secondes passées dans ce niveau
 # après une période de chauffe, puis ferme le jeu. Résultat : CSV + résumé (moyenne, médiane, min, 1 % bas).
 # Usage : bench_level.ps1 -Level underwater_aerial_garden -Seconds 120 -Warmup 25 -Env @{...} -Tag nom
 param(
-    [string]$InstallDir = 'C:\Akibot',
+    [string]$InstallDir = 'C:\AkiBot',
     [string]$Level = 'underwater_aerial_garden',
     [int]$Seconds = 120,
     [int]$Warmup = 25,
@@ -16,11 +16,15 @@ $ErrorActionPreference = 'Stop'
 $out = Join-Path $InstallDir 'Logs\hybrid-run.out.log'
 $err = Join-Path $InstallDir 'Logs\hybrid-run.err.log'
 Get-Process AstroBot* -ErrorAction SilentlyContinue | Stop-Process -Force
-Start-Sleep -Milliseconds 800
-$base = @{ ASTROHYBRID_FPS_LIMIT = 'unlimited'; KYTY_GPU_WIDTH = "$Width"; KYTY_GPU_HEIGHT = "$Height"; ASTROHYBRID_SKIP_INTRO = '1' }
+# Attendre la vraie fermeture du jeu précédent, puis effacer ses journaux (sinon on lit l'ancien « Level has started »)
+$t = Get-Date
+while ((Get-Process AstroBot* -ErrorAction SilentlyContinue) -and ((Get-Date) - $t).TotalSeconds -lt 30) { Start-Sleep -Milliseconds 300 }
+Start-Sleep -Seconds 3
+Remove-Item $out, $err -ErrorAction SilentlyContinue
+$base = @{ AKIBOT_FPS_LIMIT = 'unlimited'; KYTY_GPU_WIDTH = "$Width"; KYTY_GPU_HEIGHT = "$Height"; AKIBOT_SKIP_INTRO = '1' }
 foreach ($k in $Env.Keys) { $base[$k] = $Env[$k] }
 foreach ($k in $base.Keys) { Set-Item -Path "env:$k" -Value $base[$k] }
-Start-Process cmd.exe -ArgumentList '/c', "`"$InstallDir\Run-AstroHybrid.bat`" -lvl $Level" -WorkingDirectory $InstallDir -WindowStyle Minimized | Out-Null
+Start-Process (Join-Path $InstallDir 'AkiBot.exe') -ArgumentList '--run', '-lvl', $Level -WorkingDirectory $InstallDir | Out-Null
 
 # Attendre l'entrée dans le niveau
 $t0 = Get-Date; $inLevel = $null

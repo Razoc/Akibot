@@ -1,7 +1,7 @@
-From e71f2c16093292ecd89c375a589a0b944f27a17a Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Sun, 8 Nov 2026 19:16:13 +0000
-Subject: [PATCH 18/35] feat(hybrid): 40/45 FPS limits, fixed-cadence pacing
+Subject: [PATCH 18/42] feat(hybrid): 40/45 FPS limits, fixed-cadence pacing
  for every limit, fullscreen start
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
@@ -11,17 +11,17 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  2 files changed, 19 insertions(+), 5 deletions(-)
 
 diff --git a/src/graphics/presentation/videoOut.cpp b/src/graphics/presentation/videoOut.cpp
-index 53936ad3..4b705e04 100644
+index 460ffa5e..40f908f0 100644
 --- a/src/graphics/presentation/videoOut.cpp
 +++ b/src/graphics/presentation/videoOut.cpp
 @@ -870,19 +870,23 @@ void VideoOutDriver::Impl::VblankEnd() {
  // <= 500 us) instead of only at a vblank. The timeline restarts when the switch turns on or the
  // refresh rate changes. Independent of KYTY_PRESENT_PORT_UNLOCKED, which only changes FlipQueue::Flip.
  static Live::Switch g_present_abs_vblank("KYTY_PRESENT_ABS_VBLANK", Live::ParseDefaultOff);
-+// ASTROHYBRID_FPS_PACING (default on; =0 off): with a frame-rate limit, presents keep a fixed cadence
++// AKIBOT_FPS_PACING (default on; =0 off): with a frame-rate limit, presents keep a fixed cadence
 +// (each due time is the previous due time plus the interval) instead of restarting the interval at
 +// every present, which let timer overshoots accumulate (30 FPS limit measured 29.76 FPS, uneven gaps).
-+static Live::Switch g_frame_limit_pacing("ASTROHYBRID_FPS_PACING", Live::ParseDefaultOn);
++static Live::Switch g_frame_limit_pacing("AKIBOT_FPS_PACING", Live::ParseDefaultOn);
  
  namespace {
  
@@ -35,7 +35,7 @@ index 53936ad3..4b705e04 100644
  
  std::atomic<uint32_t>& FrameLimitChoice() {
  	static std::atomic<uint32_t> choice {[] {
- 		const char* value = std::getenv("ASTROHYBRID_FPS_LIMIT");
+ 		const char* value = std::getenv("AKIBOT_FPS_LIMIT");
  		if (value != nullptr) {
 -			constexpr std::array<const char*, 4> options {"30", "60", "120", "unlimited"};
 +			constexpr std::array<const char*, 6> options {"30", "40", "45", "60", "120", "unlimited"};
@@ -56,7 +56,7 @@ index 53936ad3..4b705e04 100644
  	};
  
 diff --git a/src/hybrid/kytyGpuBridge.cpp b/src/hybrid/kytyGpuBridge.cpp
-index be1b565d..e68eb740 100644
+index 6c805531..2533962e 100644
 --- a/src/hybrid/kytyGpuBridge.cpp
 +++ b/src/hybrid/kytyGpuBridge.cpp
 @@ -524,6 +524,12 @@ void RendererThread() {
@@ -73,5 +73,5 @@ index be1b565d..e68eb740 100644
  		Config::Load(options);
  		subsystems.Initialize<Log::Lifecycle>();
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

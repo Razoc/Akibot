@@ -1,7 +1,7 @@
-From 57c22bd6c3a211329fe9732835141781158970b6 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Sat, 7 Nov 2026 23:46:03 +0000
-Subject: [PATCH 13/35] feat(hybrid): ABI 1.4, the relay applies the host's pad
+Subject: [PATCH 13/42] feat(hybrid): ABI 1.4, the relay applies the host's pad
  output (rumble, light bar, trigger effects)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
@@ -11,7 +11,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  2 files changed, 81 insertions(+), 5 deletions(-)
 
 diff --git a/src/hybrid/kytyGpuApi.h b/src/hybrid/kytyGpuApi.h
-index 722904ef..a1e1c261 100644
+index 47a62166..cb2d4530 100644
 --- a/src/hybrid/kytyGpuApi.h
 +++ b/src/hybrid/kytyGpuApi.h
 @@ -21,7 +21,7 @@ extern "C" {
@@ -61,10 +61,10 @@ index 722904ef..a1e1c261 100644
 +#define KYTY_GPU_HOST_CALLBACKS_SIZE_1_3 offsetof(KytyGpuHostCallbacks, fetch_pad_output)
 +
  /* The host module kyty_gpu.dll looks for when game code reaches an export before any host called
-  * init: LoadLibrary(KYTY_GPU_HOST_MODULE or "libAstroHybridHost.prx"), then this function. */
- #define KYTY_GPU_HOST_MODULE_DEFAULT "libAstroHybridHost.prx"
+  * init: LoadLibrary(KYTY_GPU_HOST_MODULE or "libAkiBotHost.prx"), then this function. */
+ #define KYTY_GPU_HOST_MODULE_DEFAULT "libAkiBotHost.prx"
 diff --git a/src/hybrid/kytyGpuBridge.cpp b/src/hybrid/kytyGpuBridge.cpp
-index 90da1800..be1b565d 100644
+index e443a32c..6c805531 100644
 --- a/src/hybrid/kytyGpuBridge.cpp
 +++ b/src/hybrid/kytyGpuBridge.cpp
 @@ -35,6 +35,7 @@
@@ -171,5 +171,5 @@ index 90da1800..be1b565d 100644
  	Loader::SymbolDatabase symbols;
  	Libs::InitAgcDriver_1(&symbols);
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

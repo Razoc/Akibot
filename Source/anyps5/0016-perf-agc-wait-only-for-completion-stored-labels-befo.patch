@@ -1,7 +1,7 @@
-From 0ed7b2ba47b743a66a4b69e7fd8e100d959f5b05 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Fri, 30 Oct 2026 10:00:04 +0000
-Subject: [PATCH 16/26] perf(agc): wait only for completion-stored labels
+Subject: [PATCH 16/27] perf(agc): wait only for completion-stored labels
  before resource reads (APS5_SYNC_COMPLETION_LABELS_ONLY)
 
 CompletePendingCpuWrites synced on any label in the read range. Labels
@@ -47,5 +47,5 @@ index 54b32affd4..13536ff2a2 100644
  
  ### core/relinker
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

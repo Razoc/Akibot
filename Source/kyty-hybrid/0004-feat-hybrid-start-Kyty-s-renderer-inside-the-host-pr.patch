@@ -1,7 +1,7 @@
-From 6551a90fb1475af755b0e9b76a3dcb6cb102e598 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Fri, 6 Nov 2026 20:20:56 +0000
-Subject: [PATCH 04/35] feat(hybrid): start Kyty's renderer inside the host
+Subject: [PATCH 04/42] feat(hybrid): start Kyty's renderer inside the host
  process (milestone 2a)
 
 start_graphics runs Kyty's subsystems in kyty_emulator's order (Config, Log,
@@ -18,7 +18,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  2 files changed, 118 insertions(+), 12 deletions(-)
 
 diff --git a/src/hybrid/kytyGpuBridge.cpp b/src/hybrid/kytyGpuBridge.cpp
-index 6e54a300..b6da560a 100644
+index 47eeef11..84b78beb 100644
 --- a/src/hybrid/kytyGpuBridge.cpp
 +++ b/src/hybrid/kytyGpuBridge.cpp
 @@ -14,16 +14,31 @@
@@ -140,7 +140,7 @@ index 6e54a300..b6da560a 100644
  }
  
 diff --git a/tests/hybrid/kytyGpuLoadTest.c b/tests/hybrid/kytyGpuLoadTest.c
-index d9fab0ab..1a84eae9 100644
+index 3476c22b..b2ac25a5 100644
 --- a/tests/hybrid/kytyGpuLoadTest.c
 +++ b/tests/hybrid/kytyGpuLoadTest.c
 @@ -10,7 +10,10 @@
@@ -218,5 +218,5 @@ index d9fab0ab..1a84eae9 100644
  	printf("%d checks, %d failed\n", g_checks, g_failures);
  	return g_failures == 0 ? 0 : 1;
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

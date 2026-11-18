@@ -2,7 +2,7 @@ From 1d2956957807840fad8f55e7941296a5d13d208d Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Sat, 7 Nov 2026 20:36:54 +0000
 Subject: [PATCH] perf(watchdog): lock-free updates of known events
- (ASTROHYBRID_WATCHDOG_FAST_EVENTS)
+ (AKIBOT_WATCHDOG_FAST_EVENTS)
 
 KYTY_HANG_WATCHDOG=auto enables the hang watchdog on RTX 50 GPUs, where
 NoteEvent's global mutex and probe ran ~1,000 times per frame on the
@@ -24,7 +24,7 @@ index 71aa9f40..7e64b8a3 100644
  	bool   used = false; // publisher mutex only; tombstones keep probing chains intact
  	Record record;
  	std::array<std::atomic<char>, 64> name {};
-+	std::atomic_flag writing; // ASTROHYBRID_WATCHDOG_FAST_EVENTS: one publisher at a time
++	std::atomic_flag writing; // AKIBOT_WATCHDOG_FAST_EVENTS: one publisher at a time
  };
  struct GuestModule {
  	Record                            range;
@@ -32,7 +32,7 @@ index 71aa9f40..7e64b8a3 100644
  	t.gpu.store(gpu, std::memory_order_relaxed);
  	t.dispatched.store(dispatched, std::memory_order_relaxed);
  }
-+// ASTROHYBRID_WATCHDOG_FAST_EVENTS=1 (startup, default off): a thread that publishes an event it
++// AKIBOT_WATCHDOG_FAST_EVENTS=1 (startup, default off): a thread that publishes an event it
 +// published before (same queue, ident and filter, still in the slot it found last time) updates the
 +// record without g_event_mutex. KYTY_HANG_WATCHDOG=auto turns the watchdog on for RTX 50 GPUs, and
 +// there the mutex and probe cost the command processor ~1,000 events per frame (Sky Garden on an
@@ -43,7 +43,7 @@ index 71aa9f40..7e64b8a3 100644
 +namespace {
 +bool FastEvents() {
 +	static const bool on = [] {
-+		const auto* value = std::getenv("ASTROHYBRID_WATCHDOG_FAST_EVENTS");
++		const auto* value = std::getenv("AKIBOT_WATCHDOG_FAST_EVENTS");
 +		return value != nullptr && std::strcmp(value, "1") == 0;
 +	}();
 +	return on;

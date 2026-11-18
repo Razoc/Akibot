@@ -91,7 +91,7 @@ index 622df922..1b784f95 100644
  		ImGui::SetNextWindowBgAlpha(0.55f);
  	}
  	const bool open = ImGui::Begin("##kyty_performance_overlay", nullptr, FLAGS);
-+	// ASTROHYBRID_DLSSG (frameGen.h): with frame generation the screen shows more frames than the
++	// AKIBOT_DLSSG (frameGen.h): with frame generation the screen shows more frames than the
 +	// game renders; both are shown.
 +	const double generated = Graphics::FrameGen::ShownPerGameFrame();
 +	const bool   frame_gen = generated > 1.05;
@@ -123,7 +123,7 @@ index 622df922..1b784f95 100644
 From af49c78c1a3cbd2a9a89ce612e6c1af278b75dcc Mon Sep 17 00:00:00 2001
 From: Codex <codex@example.com>
 Date: Thu, 12 Nov 2026 23:14:46 +0000
-Subject: [PATCH 2/3] feat(hybrid): ASTROHYBRID_FPS_LIMIT accepts any value
+Subject: [PATCH 2/3] feat(hybrid): AKIBOT_FPS_LIMIT accepts any value
  from 10 to 240
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
@@ -139,7 +139,7 @@ index 4b73fdb1..3f17232a 100644
  constexpr std::array<const char*, 10> FRAME_LIMIT_LABELS {"30 FPS", "35 FPS", "40 FPS", "45 FPS", "50 FPS",
                                                          "55 FPS", "60 FPS", "90 FPS", "120 FPS", "No limit"};
  
-+// ASTROHYBRID_FPS_LIMIT: one of the listed values, or any whole number of frames per second from 10
++// AKIBOT_FPS_LIMIT: one of the listed values, or any whole number of frames per second from 10
 +// to 240 (the launcher's frame-generation target divides the on-screen rate by the multiplier, e.g.
 +// 50 on screen with 2x = 25). Ctrl+F2 then cycles the listed values as before.
 +constexpr uint32_t    FRAME_LIMIT_CUSTOM = 1000;
@@ -148,7 +148,7 @@ index 4b73fdb1..3f17232a 100644
 +
  std::atomic<uint32_t>& FrameLimitChoice() {
  	static std::atomic<uint32_t> choice {[] {
- 		const char* value = std::getenv("ASTROHYBRID_FPS_LIMIT");
+ 		const char* value = std::getenv("AKIBOT_FPS_LIMIT");
 @@ -902,6 +909,14 @@ std::atomic<uint32_t>& FrameLimitChoice() {
  					return i;
  				}
@@ -221,7 +221,7 @@ index 619cf064..80f8eab1 100644
  	uint64_t              presents = 0, presented_frames = 0;
  	std::atomic<double>   shown_ratio {1.0};
  	int64_t               print_ns = 0;
-+	// ASTROHYBRID_DLSSG_TARGET: adaptive multiplier (present thread, options under options_mutex).
++	// AKIBOT_DLSSG_TARGET: adaptive multiplier (present thread, options under options_mutex).
 +	std::mutex            options_mutex;
 +	uint32_t              target_fps = 0;
 +	uint32_t              max_frames = 3;
@@ -261,13 +261,13 @@ index 619cf064..80f8eab1 100644
  	s.tags = s.tag_failures = s.sleeps = 0;
  	s.presents = s.presented_frames = 0;
 @@ -302,6 +314,12 @@ PFN_vkGetInstanceProcAddr LoaderBeforeInstance() {
- 	if (const char* value = std::getenv("ASTROHYBRID_DLSSG_FRAMES"); value != nullptr) {
+ 	if (const char* value = std::getenv("AKIBOT_DLSSG_FRAMES"); value != nullptr) {
  		s.frames_generated = std::max(1, std::atoi(value));
  	}
-+	if (const char* value = std::getenv("ASTROHYBRID_DLSSG_TARGET"); value != nullptr) {
++	if (const char* value = std::getenv("AKIBOT_DLSSG_TARGET"); value != nullptr) {
 +		s.target_fps = static_cast<uint32_t>(std::clamp(std::atoi(value), 0, 400));
 +	}
-+	if (const char* value = std::getenv("ASTROHYBRID_DLSSG_MAX_FRAMES"); value != nullptr) {
++	if (const char* value = std::getenv("AKIBOT_DLSSG_MAX_FRAMES"); value != nullptr) {
 +		s.max_frames = static_cast<uint32_t>(std::clamp(std::atoi(value), 1, 5));
 +	}
  	std::printf("DLSS-G: Streamline initialised; Vulkan through sl.interposer.dll\n");
@@ -292,7 +292,7 @@ index 619cf064..80f8eab1 100644
  }
  
 +namespace {
-+// ASTROHYBRID_DLSSG_TARGET: the smallest multiplier that keeps the screen at or above the target for
++// AKIBOT_DLSSG_TARGET: the smallest multiplier that keeps the screen at or above the target for
 +// the game's measured frame rate (half-second windows); up after one short window, down only after
 +// four windows (2 s) in which the lower multiplier would have been enough.
 +void Adapt() {
@@ -353,11 +353,11 @@ index 972415e9..e3f33ab7 100644
 +++ b/src/graphics/host_gpu/renderer/frameGen.h
 @@ -26,6 +26,9 @@
  //  - the presenter marks present start and end with the presented flip's frame.
- // ASTROHYBRID_DLSSG_FRAMES=n (default 1): frames generated per rendered frame, clamped to what the
+ // AKIBOT_DLSSG_FRAMES=n (default 1): frames generated per rendered frame, clamped to what the
  // runtime reports (numFramesToGenerateMax). Dynamic multi frame generation is not used (D3D12 only).
-+// ASTROHYBRID_DLSSG_TARGET=n (default 0 = fixed): adaptive whole multiplier instead: every half second
++// AKIBOT_DLSSG_TARGET=n (default 0 = fixed): adaptive whole multiplier instead: every half second
 +// the smallest multiplier keeping the screen at or above n FPS for the game's measured rate (up at
-+// once, down after 2 s), at most ASTROHYBRID_DLSSG_MAX_FRAMES (default 3) generated frames.
++// once, down after 2 s), at most AKIBOT_DLSSG_MAX_FRAMES (default 3) generated frames.
  // One "DLSS-G 10s:" console line every 10 s with the runtime's status and frames presented.
  namespace Libs::Graphics::FrameGen {
  

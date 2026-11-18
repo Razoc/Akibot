@@ -1,4 +1,4 @@
-# Astro Bot native PC port (AstroHybrid): DLSS Frame Generation, Reflex, any controller
+# Astro Bot native PC port (AkiBot): DLSS Frame Generation, Reflex, any controller
 
 
 
@@ -10,9 +10,9 @@ shaders, keys, saves or game artwork. You need your own decrypted dump of the ga
 
 ## Download and play
 
-1. Download the **AstroBotPC-AstroHybrid** zip from the [latest release](https://github.com/imnotsharingmyname/pcportastrobot/releases/latest)
+1. Download the **AstroBotPC-AkiBot** zip from the [latest release](https://github.com/imnotsharingmyname/pcportastrobot/releases/latest)
    and extract it anywhere with about 1 GB free (the game itself stays where your dump is).
-2. Start **AstroHybrid.exe**. Setup asks for your Astro Bot dump folder (Browse, or paste the path and press Check folder, then Install) (the one with `eboot.bin`, `sce_module`,
+2. Start **AkiBot.exe**. Setup asks for your Astro Bot dump folder (Browse, or paste the path and press Check folder, then Install) (the one with `eboot.bin`, `sce_module`,
    `sce_sys`) and builds the Windows version of the game from it in about two minutes. Your dump is only read.
 3. The app picks the best settings for your PC once (graphics card, CPU, RAM, display); change anything on the
    Graphics, Controller and Advanced pages.
@@ -26,7 +26,7 @@ locations); everything else works the same way. Only 01.019.000 has been tested.
 
 Requirements: Windows 10/11 x64, a Vulkan GPU; DLSS needs an RTX card, frame generation an RTX 40 or 50.
 Controllers: DualSense, DualShock 4, Xbox, Switch Pro and compatible pads, generic pads (the one you press plays).
-Command line: `AstroHybrid.exe --setup "<dump folder>"` runs the setup without a window; `--remove-game` removes
+Command line: `AkiBot.exe --setup "<dump folder>"` runs the setup without a window; `--remove-game` removes
 what setup built.
 
 ### Screenshots
@@ -43,7 +43,7 @@ This is **not an emulator**. It is a native port:
 
 - **AnyPS5** relinks the game's own x86-64 code into a Windows `.exe` (`AstroBot.exe`). The PS5 system
   libraries (kernel, libc, pad, audio, save data and so on) are reimplemented natively as Windows modules.
-- **AstroHybrid**: the PS5 GPU side (AGC command buffers, shaders, VideoOut) is handled by a GPU stack taken from
+- **AkiBot**: the PS5 GPU side (AGC command buffers, shaders, VideoOut) is handled by a GPU stack taken from
   KytyPS5 and built as `kyty_gpu.dll`. It translates the GPU work to Vulkan and is loaded by the native exe.
 - **NVIDIA RTX layer** (new): the game's own temporal upscale pass is found at run time and its inputs (colour,
   depth, motion vectors, jitter, camera matrices) are handed to DLSS and to DLSS Frame Generation through
@@ -77,18 +77,18 @@ Caveat: numbers move with background load. With a browser playing audio the same
 
 ## What's new in this update
 
-- **DLSS Super Resolution** (`ASTROHYBRID_DLSS=1`). Needed a fix in AnyPS5's libc: CUDA (which DLSS uses) needs
-  a 48 GiB address window below 1 TiB, which the PS5 memory map had taken (`ASTROHYBRID_CUDA_HOLE=1`).
-- **DLSS Frame Generation and Multi Frame Generation** through Streamline (`ASTROHYBRID_DLSSG=1`,
+- **DLSS Super Resolution** (`AKIBOT_DLSS=1`). Needed a fix in AnyPS5's libc: CUDA (which DLSS uses) needs
+  a 48 GiB address window below 1 TiB, which the PS5 memory map had taken (`AKIBOT_CUDA_HOLE=1`).
+- **DLSS Frame Generation and Multi Frame Generation** through Streamline (`AKIBOT_DLSSG=1`,
   2x / 3x / 4x), with an **adaptive mode** that picks the multiplier in game every half second to stay at or
-  above a target on screen (`ASTROHYBRID_DLSSG_TARGET`). The game itself is never capped below 30 FPS.
-- **NVIDIA Reflex** for Vulkan through `VK_NV_low_latency2` (`ASTROHYBRID_LOW_LATENCY=1`).
-- **Cloth and bubble stability** (`KYTY_BUFFER_RANGE_FIXES=1`, `ASTROHYBRID_COMMIT_EPOCH_FASTPATH=0`, plus 60 Hz cloth physics step cap during real-time speed below 60 FPS; issues #30, #35).
+  above a target on screen (`AKIBOT_DLSSG_TARGET`). The game itself is never capped below 30 FPS.
+- **NVIDIA Reflex** for Vulkan through `VK_NV_low_latency2` (`AKIBOT_LOW_LATENCY=1`).
+- **Cloth and bubble stability** (`KYTY_BUFFER_RANGE_FIXES=1`, `AKIBOT_COMMIT_EPOCH_FASTPATH=0`, plus 60 Hz cloth physics step cap during real-time speed below 60 FPS; issues #30, #35).
 - **Performance overlay** shows frames on screen and the game's own rate with Frame Generation.
 - **Controllers**: DualSense (rumble, light bar, adaptive triggers, motion), Xbox, Switch Pro and compatible
   pads, generic pads. The pad you press becomes player 1 (before, a second pad got no input), vibration
   strength for non-DualSense pads, a stronger-rumble option for third-party Switch-style pads.
-- **Launcher** (`AstroBot Launcher.exe`, source in `Tools/hybrid/launcher`):
+- **Launcher** (now `AkiBot.App`):
   - new NVIDIA RTX section: upscaling, frame generation (Off / Auto / 2x / 3x / 4x), on-screen target, Reflex;
   - new Controls section: controller choice and vibration strength;
   - **"Best settings for this PC"**: reads the graphics card, CPU, RAM and display and fills in everything,
@@ -114,7 +114,7 @@ drives the screen:
 
 - DLSS Super Resolution and Reflex: any RTX card. Frame Generation: RTX 40 or newer; 3x and 4x: RTX 50.
 - The Streamline SDK 2.14.16 and the DLSS runtime, downloaded by you from NVIDIA; the runtime files go next to
-  the game (`ASTROHYBRID_DLSS_PATH`). They are not in this repository.
+  the game (`AKIBOT_DLSS_PATH`). They are not in this repository.
 - Frame Generation runs only while the game window is focused. Do not combine it with NVIDIA Smooth Motion.
 - Only whole multipliers: NVIDIA's dynamic (fractional) multiplier is D3D12-only.
 
@@ -132,15 +132,15 @@ drives the screen:
 
 | Folder | Contents |
 |---|---|
-| `Source/patches` | AnyPS5 patch series (native libraries, AstroHybrid host, DualSense input/rumble/triggers/motion, CUDA address window) |
+| `Source/patches` | AnyPS5 patch series (native libraries, AkiBot host, DualSense input/rumble/triggers/motion, CUDA address window) |
 | `Source/hybrid/patches` | KytyPS5 patch series for `kyty_gpu.dll` (frame pacing, real-time speed, fast path, Reflex, DLSS, Frame Generation, overlay, controllers) |
 | `Source/game-patches` | Small optional byte patches applied at load time (lighting mode, GI probes, fixed 1080p) |
 | `Source/experiments` | Measured experiments that were not kept, with their patches |
-| `Tools/hybrid` | Launcher, run-folder builder, Kyty build script, reverse-engineering helpers |
+| `Tools/hybrid` | Run-folder builder, Kyty build script (`build-kyty-pgo.ps1`), reverse-engineering helpers |
 | `Tests` | Benchmarks and A/B test scripts |
 | `Docs` | Build instructions, technical plans, reverse-engineering notes, and the full results log (`OVERNIGHT.md`) |
-| `Run-AstroHybrid*.bat` | Start scripts: plain, DLSS, Frame Generation |
-| `AstroHybrid.App` | The AstroHybrid app (WPF, .NET Framework 4.8): setup from a dump (`Services/GameSetup.cs`, a C# port of AnyPS5's `unwrap_self.py`), settings, best settings for the PC, launch |
+| `AkiBot.exe --run` | Starts the game without a window (runtime defaults + the caller's environment), for scripts |
+| `AkiBot.App` | The AkiBot app (WPF, .NET Framework 4.8): setup from a dump (`Services/GameSetup.cs`, a C# port of AnyPS5's `unwrap_self.py`), settings, best settings for the PC, launch |
 | `Tools/release` | `make_release.ps1` builds the download from a working install (with a guard against game files); `make_icon.ps1` draws the app icon |
 
 ## Status

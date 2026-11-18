@@ -65,7 +65,7 @@ index 0d33c140..da0cd8dc 100644
  // process default CPU sets: guest threads, draw-prep workers, service and completion threads, the
  // CP recorder, and driver threads alike.
  // cp+recorder: the CP recorder thread (KYTY_CP_RECORDER=1) gets a second core the same way.
-+// cp+sibling (AstroHybrid): the CP keeps its core's first logical processor and the recorder gets the
++// cp+sibling (AkiBot): the CP keeps its core's first logical processor and the recorder gets the
 +// other one (its SMT sibling), which `cp` leaves almost idle; every other thread stays off the core
 +// as with `cp`. On 6-core CPUs the draw-prep workers and guest threads then share 10 processors
 +// without the recorder (Ryzen 5 5500, Sky Garden: the CP spun ~12% of its time on the head slot).

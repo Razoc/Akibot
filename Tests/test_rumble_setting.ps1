@@ -17,12 +17,12 @@ if (-not (Test-Path $roslyn)) {
 }
 
 # The app's own model and helper, so the test cannot drift from what ships.
-$release = Join-Path $root 'AstroHybrid.App\bin\Release'
+$release = Join-Path $root 'AkiBot.App\bin\Release'
 $program = @'
 using System;
 using System.Text.Json;
-using AstroHybrid.App.Models;
-using AstroHybrid.App.Services;
+using AkiBot.App.Models;
+using AkiBot.App.Services;
 
 static class RumbleTest
 {
@@ -107,19 +107,13 @@ $source = Join-Path $work 'RumbleTest.cs'
 Set-Content -Path $source -Value $program -Encoding ASCII
 Get-ChildItem $release -Filter *.dll | Copy-Item -Destination $work
 # The app's own binding redirects (System.Runtime.CompilerServices.Unsafe and friends) must apply here too.
-Copy-Item (Join-Path $root 'AstroHybrid.App\obj\Release\AstroHybrid.exe.config') (Join-Path $work 'RumbleTest.exe.config')
+Copy-Item (Join-Path $root 'AkiBot.App\obj\Release\AkiBot.exe.config') (Join-Path $work 'RumbleTest.exe.config')
 $refs = Get-ChildItem $release -Filter *.dll | ForEach-Object { "/r:$($_.FullName)" }
 & $roslyn /nologo /target:exe /langversion:latest /nullable:enable "/out:$work\RumbleTest.exe" `
     $refs `
-    (Join-Path $root 'AstroHybrid.App\Services\RumbleSetting.cs') `
-    (Join-Path $root 'AstroHybrid.App\Models\AppSettings.cs') $source
+    (Join-Path $root 'AkiBot.App\Services\RumbleSetting.cs') `
+    (Join-Path $root 'AkiBot.App\Models\AppSettings.cs') $source
 if ($LASTEXITCODE -ne 0) { throw "csc failed ($LASTEXITCODE)" }
 & "$work\RumbleTest.exe"
 if ($LASTEXITCODE -ne 0) { throw "rumble checks failed ($LASTEXITCODE)" }
 
-# The classic launcher is a single source file built with the Windows compiler; it must still compile.
-$launcherOut = Join-Path $work 'AstroBotLauncher.exe'
-& "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /target:winexe /optimize+ "/out:$launcherOut" `
-    /r:System.Windows.Forms.dll /r:System.Drawing.dll (Join-Path $root 'Tools\hybrid\launcher\AstroBotLauncher.cs')
-if ($LASTEXITCODE -ne 0) { throw "classic launcher does not compile ($LASTEXITCODE)" }
-Write-Output 'classic launcher compiles'

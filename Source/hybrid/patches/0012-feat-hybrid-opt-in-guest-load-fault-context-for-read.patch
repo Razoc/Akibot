@@ -2,7 +2,7 @@ From 758560a757111702eac72717e7b375f880cc0fb1 Mon Sep 17 00:00:00 2001
 From: Codex <codex@example.com>
 Date: Thu, 12 Nov 2026 02:32:45 +0000
 Subject: [PATCH] feat(hybrid): opt-in guest-load fault context for read faults
- in the game image (ASTROHYBRID_GUEST_LOAD_FAULTS)
+ in the game image (AKIBOT_GUEST_LOAD_FAULTS)
 
 The bridge's fault handler never published the native context, so KYTY_READ_FAULT_PUBLISHED could not engage in AstroBot.exe. Also records the faulting instruction for KYTY_FAULT_MAP.
 
@@ -40,13 +40,13 @@ index e68eb740..677582ba 100644
 +	if (Libs::Graphics::FaultCost::MapEnabled()) {
 +		Libs::Graphics::FaultCost::SetFaultInstruction(info.exception_address);
 +	}
-+	// ASTROHYBRID_GUEST_LOAD_FAULTS=1 (default off): a read fault taken by the game's own code (an
++	// AKIBOT_GUEST_LOAD_FAULTS=1 (default off): a read fault taken by the game's own code (an
 +	// instruction inside the AstroBot executable image) publishes its native context, as
 +	// kyty_emulator's handler does for guest code (runtimeLinker.cpp), so KYTY_READ_FAULT_PUBLISHED
 +	// can complete a plain load in the handler instead of waiting for the GPU. Without it the
 +	// bridge never published a context and that switch could not engage in AstroBot.exe.
 +	static const bool guest_loads = [] {
-+		const char* value = std::getenv("ASTROHYBRID_GUEST_LOAD_FAULTS");
++		const char* value = std::getenv("AKIBOT_GUEST_LOAD_FAULTS");
 +		if (value == nullptr || value[0] != '1') {
 +			return false;
 +		}

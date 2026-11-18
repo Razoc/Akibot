@@ -131,7 +131,7 @@ if ($p.HasExited) {
     $result = 'exit {0} (0x{1:X8}) after {2:N0}s' -f $code, ($code -band 0xFFFFFFFF), ((Get-Date) - $start).TotalSeconds
 } else {
     $result = "still running after ${Seconds}s (timeout, stopped by harness)"
-    if ($env:ASTROHYBRID_BENCH_GRACEFUL_EXIT -eq '1') {
+    if ($env:AKIBOT_BENCH_GRACEFUL_EXIT -eq '1') {
         # Let the renderer finish saving its caches after the measured window.
         if ($p.CloseMainWindow()) {
             [void]$p.WaitForExit(15000)

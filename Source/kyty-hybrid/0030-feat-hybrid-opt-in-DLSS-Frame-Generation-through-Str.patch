@@ -1,16 +1,16 @@
-From 5f942fb1075f406a47eb531e429e3c3afa414334 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Thu, 12 Nov 2026 22:13:44 +0000
-Subject: [PATCH 30/35] feat(hybrid): opt-in DLSS Frame Generation through
+Subject: [PATCH 30/42] feat(hybrid): opt-in DLSS Frame Generation through
  Streamline
 
-ASTROHYBRID_DLSSG=1 (with a KYTY_STREAMLINE_DIR build) initialises
+AKIBOT_DLSSG=1 (with a KYTY_STREAMLINE_DIR build) initialises
 Streamline before the Vulkan instance and takes Vulkan from
 sl.interposer.dll; the window surface is created through it so DLSS-G
 finds the window. Per guest frame: Streamline Reflex sleep and latency
 markers on the existing frame hooks, the game's camera from its per-view
 constants, depth and motion vectors tagged at the temporal upscale pass,
-and constants with previous-frame matrices. ASTROHYBRID_DLSSG_FRAMES
+and constants with previous-frame matrices. AKIBOT_DLSSG_FRAMES
 selects the generated frames, clamped to the runtime's maximum. Also:
 the pass trace can scan bound buffers for projection matrices, and DLSS
 SR now defaults to non-inverted depth as the game's projection shows.
@@ -32,14 +32,14 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  create mode 100644 src/graphics/host_gpu/renderer/frameGen.h
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 8d05e720..cca6f074 100644
+index 9cf78095..a7e3ac37 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -2594,6 +2594,13 @@ if(KYTY_NGX_SDK_DIR)
  	target_include_directories(kyty_emulator PRIVATE "${KYTY_NGX_SDK_DIR}/include")
  	target_link_libraries(kyty_emulator "${KYTY_NGX_SDK_DIR}/lib/Windows_x86_64/nvsdk_ngx_d.lib")
  endif()
-+# AstroHybrid: DLSS Frame Generation through Streamline (renderer/frameGen.cpp), headers only;
++# AkiBot: DLSS Frame Generation through Streamline (renderer/frameGen.cpp), headers only;
 +# sl.interposer.dll is loaded at run time. Empty: not built in.
 +set(KYTY_STREAMLINE_DIR "" CACHE PATH "NVIDIA Streamline SDK folder (DLSS-G); empty to build without it")
 +if(KYTY_STREAMLINE_DIR)
@@ -50,7 +50,7 @@ index 8d05e720..cca6f074 100644
  
  clang_tidy_check(kyty_emulator "" "${check_headers}" "${inc_headers}")
 diff --git a/src/graphics/host_gpu/renderer/dlss.cpp b/src/graphics/host_gpu/renderer/dlss.cpp
-index 7cf7cdd4..d43372e6 100644
+index a15a8a63..af492d43 100644
 --- a/src/graphics/host_gpu/renderer/dlss.cpp
 +++ b/src/graphics/host_gpu/renderer/dlss.cpp
 @@ -1,4 +1,5 @@
@@ -184,21 +184,21 @@ index 7cf7cdd4..d43372e6 100644
  	}
  	auto& s = Get();
 diff --git a/src/graphics/host_gpu/renderer/dlss.h b/src/graphics/host_gpu/renderer/dlss.h
-index 62f20f52..ae1728a9 100644
+index d4e1512a..b4450427 100644
 --- a/src/graphics/host_gpu/renderer/dlss.h
 +++ b/src/graphics/host_gpu/renderer/dlss.h
 @@ -29,7 +29,7 @@
- // device creation fails with the extension (ASTROHYBRID_DLSS_PROBE=1 reports it).
- // Options: ASTROHYBRID_DLSS_QUALITY=quality|balanced|performance|dlaa (the DLSS preset family;
- // default quality); ASTROHYBRID_DLSS_JITTER_SIGN=1|-1 (default 1); ASTROHYBRID_DLSS_DEPTH_INVERTED=1|0
--// (default 1); ASTROHYBRID_DLSS_PATH: the folder holding nvngx_dlss.dll.
-+// (default 0: the game's projection maps the near plane to depth 0); ASTROHYBRID_DLSS_PATH: the folder holding nvngx_dlss.dll.
+ // device creation fails with the extension (AKIBOT_DLSS_PROBE=1 reports it).
+ // Options: AKIBOT_DLSS_QUALITY=quality|balanced|performance|dlaa (the DLSS preset family;
+ // default quality); AKIBOT_DLSS_JITTER_SIGN=1|-1 (default 1); AKIBOT_DLSS_DEPTH_INVERTED=1|0
+-// (default 1); AKIBOT_DLSS_PATH: the folder holding nvngx_dlss.dll.
++// (default 0: the game's projection maps the near plane to depth 0); AKIBOT_DLSS_PATH: the folder holding nvngx_dlss.dll.
  // One "DLSS 10s:" console line every 10 s with evaluations and fallbacks by reason.
  namespace Libs::Graphics::Dlss {
  
 diff --git a/src/graphics/host_gpu/renderer/frameGen.cpp b/src/graphics/host_gpu/renderer/frameGen.cpp
 new file mode 100644
-index 00000000..49717c4b
+index 00000000..8e348052
 --- /dev/null
 +++ b/src/graphics/host_gpu/renderer/frameGen.cpp
 @@ -0,0 +1,519 @@
@@ -234,7 +234,7 @@ index 00000000..49717c4b
 +
 +bool Requested() {
 +	static const bool requested = [] {
-+		const char* value = std::getenv("ASTROHYBRID_DLSSG");
++		const char* value = std::getenv("AKIBOT_DLSSG");
 +		return value != nullptr && std::strcmp(value, "1") == 0;
 +	}();
 +	return requested;
@@ -443,9 +443,9 @@ index 00000000..49717c4b
 +		return nullptr;
 +	}
 +	auto&        s          = Get();
-+	const char*  path_value = std::getenv("ASTROHYBRID_DLSS_PATH");
++	const char*  path_value = std::getenv("AKIBOT_DLSS_PATH");
 +	std::string  dir        = path_value != nullptr ? path_value
-+	                                                : "E:\\AstroHybrid-Work\\sdk\\streamline-v2.14.16\\bin\\x64";
++	                                                : "E:\\AkiBot-Work\\sdk\\streamline-v2.14.16\\bin\\x64";
 +	const auto   dll        = dir + "\\sl.interposer.dll";
 +	s.api.module            = LoadLibraryA(dll.c_str());
 +	if (s.api.module == nullptr) {
@@ -473,9 +473,9 @@ index 00000000..49717c4b
 +	prefs.pathsToPlugins     = paths;
 +	prefs.numPathsToPlugins  = 1;
 +	prefs.pathToLogsAndData  = nullptr;
-+	// Streamline's warnings and errors on the console (ASTROHYBRID_DLSSG_LOG=1: everything).
++	// Streamline's warnings and errors on the console (AKIBOT_DLSSG_LOG=1: everything).
 +	static const bool verbose = [] {
-+		const char* value = std::getenv("ASTROHYBRID_DLSSG_LOG");
++		const char* value = std::getenv("AKIBOT_DLSSG_LOG");
 +		return value != nullptr && value[0] == '1';
 +	}();
 +	prefs.logLevel           = verbose ? sl::LogLevel::eVerbose : sl::LogLevel::eDefault;
@@ -498,7 +498,7 @@ index 00000000..49717c4b
 +		std::printf("DLSS-G: slInit failed (%d)\n", static_cast<int>(result));
 +		return nullptr;
 +	}
-+	if (const char* value = std::getenv("ASTROHYBRID_DLSSG_FRAMES"); value != nullptr) {
++	if (const char* value = std::getenv("AKIBOT_DLSSG_FRAMES"); value != nullptr) {
 +		s.frames_generated = std::max(1, std::atoi(value));
 +	}
 +	std::printf("DLSS-G: Streamline initialised; Vulkan through sl.interposer.dll\n");
@@ -698,7 +698,7 @@ index 00000000..49717c4b
 +		s.camera_wanted            = true;
 +	}
 +	const float jitter_sign = [] {
-+		const char* value = std::getenv("ASTROHYBRID_DLSS_JITTER_SIGN");
++		const char* value = std::getenv("AKIBOT_DLSS_JITTER_SIGN");
 +		return value != nullptr && std::strtof(value, nullptr) < 0 ? -1.0f : 1.0f;
 +	}();
 +	consts.jitterOffset              = sl::float2(jitter_sign * jitter_uv[0] * static_cast<float>(width),
@@ -723,7 +723,7 @@ index 00000000..49717c4b
 +} // namespace Libs::Graphics::FrameGen
 diff --git a/src/graphics/host_gpu/renderer/frameGen.h b/src/graphics/host_gpu/renderer/frameGen.h
 new file mode 100644
-index 00000000..0d9fd563
+index 00000000..8403c59b
 --- /dev/null
 +++ b/src/graphics/host_gpu/renderer/frameGen.h
 @@ -0,0 +1,70 @@
@@ -734,8 +734,8 @@ index 00000000..0d9fd563
 +
 +#include <vulkan/vulkan_core.h>
 +
-+// ASTROHYBRID_DLSSG=1 (default 0; needs a build with KYTY_STREAMLINE_DIR and the Streamline runtime
-+// in ASTROHYBRID_DLSS_PATH, plus ASTROHYBRID_CUDA_HOLE=1 like DLSS): NVIDIA DLSS Frame Generation
++// AKIBOT_DLSSG=1 (default 0; needs a build with KYTY_STREAMLINE_DIR and the Streamline runtime
++// in AKIBOT_DLSS_PATH, plus AKIBOT_CUDA_HOLE=1 like DLSS): NVIDIA DLSS Frame Generation
 +// through Streamline (frameGen.cpp).
 +//
 +// Streamline is initialised before Kyty's Vulkan instance (Vulkan, features DLSS-G, Reflex and PC
@@ -743,7 +743,7 @@ index 00000000..0d9fd563
 +// entry points from sl.interposer.dll, so Streamline adds what DLSS-G needs to the instance and
 +// device (extensions, the optical-flow queue) and intercepts the swapchain and presents.
 +//
-+// Per guest frame (numbered by flips, as for ASTROHYBRID_LOW_LATENCY, whose markers it takes over:
++// Per guest frame (numbered by flips, as for AKIBOT_LOW_LATENCY, whose markers it takes over:
 +// the Vulkan low-latency path stays off while DLSS-G is on):
 +//  - the guest render thread ends the frame with Streamline's Reflex sleep and simulation markers;
 +//  - the command processor marks render submission at each reserved flip;
@@ -753,7 +753,7 @@ index 00000000..0d9fd563
 +//  - at the game's temporal upscale pass: depth and motion vectors tagged (valid only now, copied by
 +//    Streamline in the command buffer) and the constants set for the frame;
 +//  - the presenter marks present start and end with the presented flip's frame.
-+// ASTROHYBRID_DLSSG_FRAMES=n (default 1): frames generated per rendered frame, clamped to what the
++// AKIBOT_DLSSG_FRAMES=n (default 1): frames generated per rendered frame, clamped to what the
 +// runtime reports (numFramesToGenerateMax). Dynamic multi frame generation is not used (D3D12 only).
 +// One "DLSS-G 10s:" console line every 10 s with the runtime's status and frames presented.
 +namespace Libs::Graphics::FrameGen {
@@ -798,18 +798,18 @@ index 00000000..0d9fd563
 +
 +#endif // EMULATOR_SRC_GRAPHICS_HOST_GPU_RENDERER_FRAMEGEN_H_
 diff --git a/src/graphics/host_gpu/renderer/pipeline/descriptors.cpp b/src/graphics/host_gpu/renderer/pipeline/descriptors.cpp
-index 1115eb46..e7fa0596 100644
+index 7bb43de8..a98d8992 100644
 --- a/src/graphics/host_gpu/renderer/pipeline/descriptors.cpp
 +++ b/src/graphics/host_gpu/renderer/pipeline/descriptors.cpp
 @@ -2107,6 +2107,60 @@ void TracePass(TextureCache& cache, const char* kind, std::span<PreparedBindings
  			image_text(binding.desc.type == TextureCache::BindingType::Storage ? 'S' : 'T',
  			           binding.image_id);
  		}
-+		// ASTROHYBRID_PASS_TRACE_MATRIX=1: every bound buffer (first 64 KiB) is scanned for
++		// AKIBOT_PASS_TRACE_MATRIX=1: every bound buffer (first 64 KiB) is scanned for
 +		// perspective projections (two scales whose ratio is 1.6-1.9, a +-1 in the w row or column,
 +		// zero w-w); each new hit prints its address and the 48 floats from it.
 +		static const bool scan_matrices = [] {
-+			const char* value = std::getenv("ASTROHYBRID_PASS_TRACE_MATRIX");
++			const char* value = std::getenv("AKIBOT_PASS_TRACE_MATRIX");
 +			return value != nullptr && value[0] == '1';
 +		}();
 +		if (scan_matrices) {
@@ -859,18 +859,18 @@ index 1115eb46..e7fa0596 100644
 +				}
 +			}
 +		}
- 		// ASTROHYBRID_PASS_TRACE_CB=<hex hash>: that shader's buffers, first 24 dwords each.
+ 		// AKIBOT_PASS_TRACE_CB=<hex hash>: that shader's buffers, first 24 dwords each.
  		static const uint64_t cb_hash = [] {
- 			const char* value = std::getenv("ASTROHYBRID_PASS_TRACE_CB");
+ 			const char* value = std::getenv("AKIBOT_PASS_TRACE_CB");
 diff --git a/src/graphics/host_gpu/renderer/render.h b/src/graphics/host_gpu/renderer/render.h
-index dc36c0a6..ded9d461 100644
+index b164e9a8..fdddb6e8 100644
 --- a/src/graphics/host_gpu/renderer/render.h
 +++ b/src/graphics/host_gpu/renderer/render.h
 @@ -1187,6 +1187,10 @@ private:
  	void NoteDlssTargets(std::span<const RenderColorInfo> colors, ImageId depth);
  	[[nodiscard]] bool TryDlssUpscale(CommandBuffer& buffer, PreparedBindings& pixel,
  	                                  ImageId output);
-+	// ASTROHYBRID_DLSSG (frameGen.h): the camera from a draw's bound constants, and the frame's
++	// AKIBOT_DLSSG (frameGen.h): the camera from a draw's bound constants, and the frame's
 +	// depth, motion vectors and constants at the temporal upscale pass.
 +	void NoteFrameGenCamera(const PreparedBindings& stage);
 +	void TagFrameGen(CommandBuffer& buffer, PreparedBindings& pixel);
@@ -878,7 +878,7 @@ index dc36c0a6..ded9d461 100644
  	// `site` names the caller's stage and table kind; it only selects the entry checked first.
  	// *fresh (optional): set when the returned range was allocated by this call (no earlier upload
 diff --git a/src/graphics/host_gpu/renderer/renderDraw.cpp b/src/graphics/host_gpu/renderer/renderDraw.cpp
-index 39861a35..25b4d339 100644
+index 9e7bf4ab..8b3046fd 100644
 --- a/src/graphics/host_gpu/renderer/renderDraw.cpp
 +++ b/src/graphics/host_gpu/renderer/renderDraw.cpp
 @@ -25,6 +25,7 @@
@@ -890,7 +890,7 @@ index 39861a35..25b4d339 100644
  #include "graphics/host_gpu/renderer/drawPrep/cpGaps.h"
  #include "graphics/host_gpu/renderer/drawPrep/drawPrep.h"
 @@ -4165,10 +4166,14 @@ void RenderExecutor::ExecutePreparedDraw(uint64_t submit_id, CommandBuffer& buff
- 	// ASTROHYBRID_DLSS (dlss.h): depth attachments by colour target, and the game's temporal
+ 	// AKIBOT_DLSS (dlss.h): depth attachments by colour target, and the game's temporal
  	// upscale replaced by DLSS Super Resolution. A replaced draw records nothing else; like a
  	// skipped one (KYTY_PIPELINE_SKIP below) no run record may be continued across it.
 -	if (Dlss::Requested()) [[unlikely]] {
@@ -907,7 +907,7 @@ index 39861a35..25b4d339 100644
  			m_run.valid        = false;
  			m_run_active       = false;
 diff --git a/src/graphics/presentation/window/lowLatency.cpp b/src/graphics/presentation/window/lowLatency.cpp
-index fe23dea6..5ff926ce 100644
+index 0aaafb41..20034db6 100644
 --- a/src/graphics/presentation/window/lowLatency.cpp
 +++ b/src/graphics/presentation/window/lowLatency.cpp
 @@ -1,5 +1,6 @@
@@ -1033,7 +1033,7 @@ index fe23dea6..5ff926ce 100644
  		return;
  	}
 diff --git a/src/graphics/presentation/window/vulkanWindow.cpp b/src/graphics/presentation/window/vulkanWindow.cpp
-index 1a8c48e3..21165e69 100644
+index 63a7811c..6aae51f3 100644
 --- a/src/graphics/presentation/window/vulkanWindow.cpp
 +++ b/src/graphics/presentation/window/vulkanWindow.cpp
 @@ -33,6 +33,7 @@
@@ -1048,7 +1048,7 @@ index 1a8c48e3..21165e69 100644
  	}
  }
  
-+// ASTROHYBRID_DLSSG (renderer/frameGen.h): with Streamline as the loader, the window surface is
++// AKIBOT_DLSSG (renderer/frameGen.h): with Streamline as the loader, the window surface is
 +// created through it (from SDL's window handles), so Streamline knows which window a swapchain
 +// presents to; otherwise SDL creates it as before.
 +static bool CreateWindowSurface(SDL_Window* sdl_window, vk::Instance instance, VkSurfaceKHR* out) {
@@ -1088,7 +1088,7 @@ index 1a8c48e3..21165e69 100644
  
  	auto get_instance_proc_addr =
  	    reinterpret_cast<PFN_vkGetInstanceProcAddr>(SDL_Vulkan_GetVkGetInstanceProcAddr());
-+	// ASTROHYBRID_DLSSG (renderer/frameGen.h): Vulkan through Streamline's interposer.
++	// AKIBOT_DLSSG (renderer/frameGen.h): Vulkan through Streamline's interposer.
 +	if (const auto streamline = FrameGen::LoaderBeforeInstance(); streamline != nullptr) {
 +		get_instance_proc_addr = streamline;
 +	}
@@ -1124,5 +1124,5 @@ index 1a8c48e3..21165e69 100644
  	}
  	surface = native_surface;
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

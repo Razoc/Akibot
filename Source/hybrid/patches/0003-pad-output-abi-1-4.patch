@@ -61,8 +61,8 @@ index 722904ef..a1e1c261 100644
 +#define KYTY_GPU_HOST_CALLBACKS_SIZE_1_3 offsetof(KytyGpuHostCallbacks, fetch_pad_output)
 +
  /* The host module kyty_gpu.dll looks for when game code reaches an export before any host called
-  * init: LoadLibrary(KYTY_GPU_HOST_MODULE or "libAstroHybridHost.prx"), then this function. */
- #define KYTY_GPU_HOST_MODULE_DEFAULT "libAstroHybridHost.prx"
+  * init: LoadLibrary(KYTY_GPU_HOST_MODULE or "libAkiBotHost.prx"), then this function. */
+ #define KYTY_GPU_HOST_MODULE_DEFAULT "libAkiBotHost.prx"
 diff --git a/src/hybrid/kytyGpuBridge.cpp b/src/hybrid/kytyGpuBridge.cpp
 index 90da1800..be1b565d 100644
 --- a/src/hybrid/kytyGpuBridge.cpp

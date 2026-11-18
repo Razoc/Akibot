@@ -1,7 +1,7 @@
-From 8b676a3eaf2c4c30dcfcccdf1a0a3f8e11bdc553 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Fri, 6 Nov 2026 22:39:47 +0000
-Subject: [PATCH 09/35] chore(hybrid): snapshot Claude milestone 4 build work
+Subject: [PATCH 09/42] chore(hybrid): snapshot Claude milestone 4 build work
 
 ---
  src/hybrid/kytyGpuBridge.cpp   | 31 +++++++++++++++++++++++++++++--
@@ -9,7 +9,7 @@ Subject: [PATCH 09/35] chore(hybrid): snapshot Claude milestone 4 build work
  2 files changed, 45 insertions(+), 7 deletions(-)
 
 diff --git a/src/hybrid/kytyGpuBridge.cpp b/src/hybrid/kytyGpuBridge.cpp
-index 5d8208f6..e55a6dcd 100644
+index a7d4f877..ad3d13ac 100644
 --- a/src/hybrid/kytyGpuBridge.cpp
 +++ b/src/hybrid/kytyGpuBridge.cpp
 @@ -99,7 +99,7 @@ void Log(int level, const char* format, ...) {
@@ -25,7 +25,7 @@ index 5d8208f6..e55a6dcd 100644
  	return value > 0 && value <= 7680 ? static_cast<uint32_t>(value) : fallback;
  }
  
-+// kyty_emulator takes these from its command line; the AstroHybrid launcher's choice matches the
++// kyty_emulator takes these from its command line; the AkiBot launcher's choice matches the
 +// Kyty launcher's (Immediate presentation, Performance shader optimization, 60 Hz vblank).
 +Config::PresentMode PresentModeFromEnvironment() {
 +	const char* text = std::getenv("KYTY_GPU_PRESENT_MODE");
@@ -133,5 +133,5 @@ index 1b032f91..3cfed8b9 100644
      target = out / "libwinpthread-1.dll"
      if winpthread.exists() and not target.exists():
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

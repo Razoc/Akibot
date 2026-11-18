@@ -1,12 +1,12 @@
-From 970e98d1a495cea8b2e06401dd402516f0c02573 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Thu, 12 Nov 2026 20:37:38 +0000
-Subject: [PATCH 27/35] feat(hybrid): pass trace and targeted shader dump
+Subject: [PATCH 27/42] feat(hybrid): pass trace and targeted shader dump
  diagnostics
 
-ASTROHYBRID_PASS_TRACE=<s> traces three frames of draws and dispatches
-(shader hashes, bound images, render targets); ASTROHYBRID_PASS_TRACE_CB
-adds one shader's buffer words; ASTROHYBRID_SHADER_DUMP writes the guest
+AKIBOT_PASS_TRACE=<s> traces three frames of draws and dispatches
+(shader hashes, bound images, render targets); AKIBOT_PASS_TRACE_CB
+adds one shader's buffer words; AKIBOT_SHADER_DUMP writes the guest
 code and RDNA2 disassembly of listed shaders. All off by default.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
@@ -22,7 +22,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 
 diff --git a/src/graphics/host_gpu/renderer/passTrace.h b/src/graphics/host_gpu/renderer/passTrace.h
 new file mode 100644
-index 00000000..d7ce291f
+index 00000000..154d21eb
 --- /dev/null
 +++ b/src/graphics/host_gpu/renderer/passTrace.h
 @@ -0,0 +1,83 @@
@@ -35,7 +35,7 @@ index 00000000..d7ce291f
 +#include <cstdio>
 +#include <cstdlib>
 +
-+// ASTROHYBRID_PASS_TRACE=<seconds> (diagnostic, default off): starting that many seconds after the
++// AKIBOT_PASS_TRACE=<seconds> (diagnostic, default off): starting that many seconds after the
 +// first traced pass, the next 3 guest flips are traced to stdout: every draw's and dispatch's
 +// shader stages (shader hash), the images each stage binds (sampled T / storage S: guest address,
 +// Vulkan format, extent) and every draw's colour targets (RT), one "PassTrace" line per pass, and a
@@ -66,7 +66,7 @@ index 00000000..d7ce291f
 +		return false;
 +	}
 +	if (state == 0) {
-+		const char* value = std::getenv("ASTROHYBRID_PASS_TRACE");
++		const char* value = std::getenv("AKIBOT_PASS_TRACE");
 +		if (value == nullptr || value[0] == '\0' || value[0] == '0') {
 +			g_state.store(3, std::memory_order_relaxed);
 +			return false;
@@ -110,7 +110,7 @@ index 00000000..d7ce291f
 +
 +#endif // EMULATOR_SRC_GRAPHICS_HOST_GPU_RENDERER_PASSTRACE_H_
 diff --git a/src/graphics/host_gpu/renderer/pipeline/descriptors.cpp b/src/graphics/host_gpu/renderer/pipeline/descriptors.cpp
-index 089d4522..1115eb46 100644
+index 089d4522..7bb43de8 100644
 --- a/src/graphics/host_gpu/renderer/pipeline/descriptors.cpp
 +++ b/src/graphics/host_gpu/renderer/pipeline/descriptors.cpp
 @@ -24,6 +24,7 @@
@@ -156,9 +156,9 @@ index 089d4522..1115eb46 100644
 +			image_text(binding.desc.type == TextureCache::BindingType::Storage ? 'S' : 'T',
 +			           binding.image_id);
 +		}
-+		// ASTROHYBRID_PASS_TRACE_CB=<hex hash>: that shader's buffers, first 24 dwords each.
++		// AKIBOT_PASS_TRACE_CB=<hex hash>: that shader's buffers, first 24 dwords each.
 +		static const uint64_t cb_hash = [] {
-+			const char* value = std::getenv("ASTROHYBRID_PASS_TRACE_CB");
++			const char* value = std::getenv("AKIBOT_PASS_TRACE_CB");
 +			return value != nullptr ? std::strtoull(value, nullptr, 16) : uint64_t {0};
 +		}();
 +		if (cb_hash != 0 && program.shader_hash == cb_hash) {
@@ -205,7 +205,7 @@ index 089d4522..1115eb46 100644
  	CommitStats::Mark(CommitStats::Phase::RebindImages);
  	// Discovery can read back PS5 metadata and submit the scheduler. Reserve draw buffers only
 diff --git a/src/graphics/host_gpu/renderer/pipeline/descriptors.h b/src/graphics/host_gpu/renderer/pipeline/descriptors.h
-index a84b52f5..810269d2 100644
+index a84b52f5..0ecc1cd2 100644
 --- a/src/graphics/host_gpu/renderer/pipeline/descriptors.h
 +++ b/src/graphics/host_gpu/renderer/pipeline/descriptors.h
 @@ -146,6 +146,11 @@ bool ValidateStorageTexture(const ShaderRecompiler::IR::ImageResource& resource,
@@ -213,7 +213,7 @@ index a84b52f5..810269d2 100644
                              bool fatal = true);
  
 +struct RenderColorInfo;
-+// ASTROHYBRID_PASS_TRACE (passTrace.h): one line for a traced draw or dispatch.
++// AKIBOT_PASS_TRACE (passTrace.h): one line for a traced draw or dispatch.
 +void TracePass(TextureCache& cache, const char* kind, std::span<PreparedBindings* const> stages,
 +               std::span<const RenderColorInfo> colors);
 +
@@ -221,20 +221,20 @@ index a84b52f5..810269d2 100644
  
  #endif // EMULATOR_SRC_GRAPHICS_HOST_GPU_RENDERER_DESCRIPTORS_H_
 diff --git a/src/graphics/host_gpu/renderer/pipeline/pipelineCache.cpp b/src/graphics/host_gpu/renderer/pipeline/pipelineCache.cpp
-index 9f87d1cc..e1cf54f2 100644
+index b945c470..842ec953 100644
 --- a/src/graphics/host_gpu/renderer/pipeline/pipelineCache.cpp
 +++ b/src/graphics/host_gpu/renderer/pipeline/pipelineCache.cpp
 @@ -986,6 +986,50 @@ private:
  	bool m_recordable = false;
  };
  
-+// ASTROHYBRID_SHADER_DUMP=<hex hash>,<hex hash>,... (diagnostic, default off): the guest code and
-+// its RDNA2 disassembly of those shaders are written to ASTROHYBRID_SHADER_DUMP_DIR (default
-+// E:/AstroHybrid-Work/shaderdump) when they are compiled (run with KYTY_PROGRAM_CACHE=0 so they are).
++// AKIBOT_SHADER_DUMP=<hex hash>,<hex hash>,... (diagnostic, default off): the guest code and
++// its RDNA2 disassembly of those shaders are written to AKIBOT_SHADER_DUMP_DIR (default
++// E:/AkiBot-Work/shaderdump) when they are compiled (run with KYTY_PROGRAM_CACHE=0 so they are).
 +static bool AstroShaderDumpWanted(uint64_t shader_hash) {
 +	static const std::vector<uint64_t> hashes = [] {
 +		std::vector<uint64_t> list;
-+		const char* value = std::getenv("ASTROHYBRID_SHADER_DUMP");
++		const char* value = std::getenv("AKIBOT_SHADER_DUMP");
 +		while (value != nullptr && *value != '\0') {
 +			char* end = nullptr;
 +			const auto hash = std::strtoull(value, &end, 16);
@@ -254,8 +254,8 @@ index 9f87d1cc..e1cf54f2 100644
 +	if (!AstroShaderDumpWanted(shader_hash)) {
 +		return;
 +	}
-+	const char* dir_value = std::getenv("ASTROHYBRID_SHADER_DUMP_DIR");
-+	const std::filesystem::path dir = dir_value != nullptr ? dir_value : "E:/AstroHybrid-Work/shaderdump";
++	const char* dir_value = std::getenv("AKIBOT_SHADER_DUMP_DIR");
++	const std::filesystem::path dir = dir_value != nullptr ? dir_value : "E:/AkiBot-Work/shaderdump";
 +	std::error_code error;
 +	std::filesystem::create_directories(dir, error);
 +	const auto base = dir / fmt::format("{}_{:016x}", stage_name, shader_hash);
@@ -330,7 +330,7 @@ index 6423f4b2..94444cce 100644
  	m_rebind_epoch = m_context.GetBufferCache().UnregisterEpoch();
  	auto [args_buffer, args_offset] = m_context.GetBufferCache().ObtainBuffer(
 diff --git a/src/graphics/presentation/videoOut.cpp b/src/graphics/presentation/videoOut.cpp
-index 396c4901..4b73fdb1 100644
+index b0f842ec..febb2ccc 100644
 --- a/src/graphics/presentation/videoOut.cpp
 +++ b/src/graphics/presentation/videoOut.cpp
 @@ -33,6 +33,7 @@
@@ -350,5 +350,5 @@ index 396c4901..4b73fdb1 100644
  	                                                      : Graphics::LowLatency::TakeCpuFlipFrame();
  	if (cfg.slave_count != 0) {
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

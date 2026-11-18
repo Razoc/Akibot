@@ -1,18 +1,18 @@
-From 1bde1c9cb6d6338c8bc208784750f36d8e77cc72 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Fri, 13 Nov 2026 00:43:31 +0000
-Subject: [PATCH 34/35] Controller: pick the playing pad, rumble strength for
+Subject: [PATCH 34/42] Controller: pick the playing pad, rumble strength for
  non-DualSense pads
 
-ASTROHYBRID_PAD_PREFER=auto|ps|xbox|switch|generic (default unset, Kyty's
+AKIBOT_PAD_PREFER=auto|ps|xbox|switch|generic (default unset, Kyty's
 order): the pad last connected or pressed (auto) or a pad of the chosen
 family becomes player 1, the only player the hybrid relay sends to the
 game, so a second pad no longer sits on player 2 with no input. Pads
 connected are logged to stderr with their type, rumble and motion support;
 a non-DualSense pad buzzes briefly when it takes player 1.
 
-ASTROHYBRID_RUMBLE_SCALE=percent (default 100) scales rumble on pads other
-than a DualSense; ASTROHYBRID_RUMBLE_SWITCH_FLOOR=n (default 0) gives
+AKIBOT_RUMBLE_SCALE=percent (default 100) scales rumble on pads other
+than a DualSense; AKIBOT_RUMBLE_SWITCH_FLOOR=n (default 0) gives
 Switch-type pads a minimum strength for third-party pads that ignore weak
 rumble.
 
@@ -24,7 +24,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  3 files changed, 163 insertions(+), 2 deletions(-)
 
 diff --git a/src/graphics/presentation/window/window.cpp b/src/graphics/presentation/window/window.cpp
-index 38ed15b3..ae017617 100644
+index 26066e03..67b561fa 100644
 --- a/src/graphics/presentation/window/window.cpp
 +++ b/src/graphics/presentation/window/window.cpp
 @@ -316,6 +316,9 @@ static void GameEventController([[maybe_unused]] const EventController& f) {
@@ -38,23 +38,23 @@ index 38ed15b3..ae017617 100644
  		HostInputPadButton(f.id, f.button, f.down);
  	}
 diff --git a/src/libs/controller.cpp b/src/libs/controller.cpp
-index 0d716996..ad393f7e 100644
+index 0d716996..3255bc21 100644
 --- a/src/libs/controller.cpp
 +++ b/src/libs/controller.cpp
 @@ -909,6 +909,29 @@ static void StopHostPad(SDL_Gamepad* pad) {
  	(void)SDL_SetGamepadLED(pad, 0, 0, 0);
  }
  
-+// ASTROHYBRID_RUMBLE_SCALE=percent (default 100, 0..200): rumble strength for pads other than a
-+// DualSense. ASTROHYBRID_RUMBLE_SWITCH_FLOOR=n (default 0, 0..255): on Switch-type pads a motor that
++// AKIBOT_RUMBLE_SCALE=percent (default 100, 0..200): rumble strength for pads other than a
++// DualSense. AKIBOT_RUMBLE_SWITCH_FLOOR=n (default 0, 0..255): on Switch-type pads a motor that
 +// is on runs at least at n, for pads (third-party ones above all) that ignore weak rumble.
 +static uint16_t HostRumble(int id, uint8_t motor) {
 +	static const int scale = [] {
-+		const char* value = std::getenv("ASTROHYBRID_RUMBLE_SCALE");
++		const char* value = std::getenv("AKIBOT_RUMBLE_SCALE");
 +		return value != nullptr ? std::clamp(std::atoi(value), 0, 200) : 100;
 +	}();
 +	static const int floor = [] {
-+		const char* value = std::getenv("ASTROHYBRID_RUMBLE_SWITCH_FLOOR");
++		const char* value = std::getenv("AKIBOT_RUMBLE_SWITCH_FLOOR");
 +		return value != nullptr ? std::clamp(std::atoi(value), 0, 255) : 0;
 +	}();
 +	if (motor == 0) {
@@ -86,7 +86,7 @@ index 0d716996..ad393f7e 100644
  	}
  }
  
-+// ASTROHYBRID_PAD_PREFER (default unset: the first pad connected stays player 1, the only player
++// AKIBOT_PAD_PREFER (default unset: the first pad connected stays player 1, the only player
 +// the relay sends to the game): which pad plays. "auto": the pad last connected or pressed takes
 +// player 1; "ps", "xbox", "switch" or "generic": a pad of that family takes player 1 whenever one is
 +// connected, any other pad only while none is. Pads connected are logged to stderr, and a pad that
@@ -111,7 +111,7 @@ index 0d716996..ad393f7e 100644
 +// -1: off; 0: auto; 1 + PadFamily: that family.
 +static int PadPreference() {
 +	static const int mode = [] {
-+		const char* value = std::getenv("ASTROHYBRID_PAD_PREFER");
++		const char* value = std::getenv("AKIBOT_PAD_PREFER");
 +		if (value == nullptr || value[0] == 0) {
 +			return -1;
 +		}
@@ -149,7 +149,7 @@ index 0d716996..ad393f7e 100644
 +	}
 +	const auto props = SDL_GetGamepadProperties(pad);
 +	std::fprintf(stderr,
-+	             "[astrohybrid 0] controller %d: '%s' (%s, type %s, %04x:%04x), rumble %s, motion %s\n", id,
++	             "[akibot 0] controller %d: '%s' (%s, type %s, %04x:%04x), rumble %s, motion %s\n", id,
 +	             SDL_GetGamepadName(pad), FamilyName(FamilyOf(id)),
 +	             SDL_GetGamepadStringForType(SDL_GetGamepadType(pad)), SDL_GetGamepadVendor(pad),
 +	             SDL_GetGamepadProduct(pad),
@@ -175,7 +175,7 @@ index 0d716996..ad393f7e 100644
 +	}
 +	self->second = 0;
 +	RefreshPlayers();
-+	std::fprintf(stderr, "[astrohybrid 0] controller %d is player 1 now\n", id);
++	std::fprintf(stderr, "[akibot 0] controller %d is player 1 now\n", id);
 +	std::fflush(stderr);
 +	if (FamilyOf(id) != PadFamily::PlayStation) {
 +		if (auto* pad = SDL_GetGamepadFromID(static_cast<SDL_JoystickID>(id))) {
@@ -230,18 +230,18 @@ index 0d716996..ad393f7e 100644
  
  void Disconnect(int id) {
 diff --git a/src/libs/controller.h b/src/libs/controller.h
-index 881d4c82..1dd3379a 100644
+index 881d4c82..4a857d94 100644
 --- a/src/libs/controller.h
 +++ b/src/libs/controller.h
 @@ -74,6 +74,8 @@ inline int controller_get_axis(int min, int max, int value) {
  
  void Connect(int id);
  void Disconnect(int id);
-+// A host pad button went down (ASTROHYBRID_PAD_PREFER in controller.cpp).
++// A host pad button went down (AKIBOT_PAD_PREFER in controller.cpp).
 +void PadPressed(int id);
  // Moves the keyboard to the next player (shared with player 1, then 1-4) while the game runs.
  void CycleKeyboardPlayer();
  void SetButton(int id, uint32_t button, bool down);
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

@@ -1,8 +1,8 @@
-From 7450e4db4ddd388ac57ddd9025fffb16b5ff127b Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Local Build <local@invalid>
 Date: Sat, 14 Nov 2026 21:32:07 +0000
-Subject: [PATCH] feat(hybrid): Bluetooth DualSense speaker/haptics bridge,
- rumble scale, SaveDataTransferringMount
+Subject: [PATCH 36/42] feat(hybrid): Bluetooth DualSense speaker/haptics
+ bridge, rumble scale, SaveDataTransferringMount
 
 ---
  src/hybrid/kytyGpuBridge.cpp    | 105 ++++++++++++++++++++++++++++++++
@@ -14,7 +14,7 @@ Subject: [PATCH] feat(hybrid): Bluetooth DualSense speaker/haptics bridge,
  6 files changed, 202 insertions(+), 17 deletions(-)
 
 diff --git a/src/hybrid/kytyGpuBridge.cpp b/src/hybrid/kytyGpuBridge.cpp
-index 8f4a8b97..b8628fcd 100644
+index 56089621..68e36704 100644
 --- a/src/hybrid/kytyGpuBridge.cpp
 +++ b/src/hybrid/kytyGpuBridge.cpp
 @@ -32,6 +32,7 @@
@@ -29,7 +29,7 @@ index 8f4a8b97..b8628fcd 100644
  			options.fullscreen_enabled  = true;
  			options.hide_cursor_enabled = true;
  		}
-+		if (const char* rumble = std::getenv("ASTROHYBRID_RUMBLE_SCALE"); rumble != nullptr && rumble[0] != '\0') {
++		if (const char* rumble = std::getenv("AKIBOT_RUMBLE_SCALE"); rumble != nullptr && rumble[0] != '\0') {
 +			options.controller_vibration_intensity =
 +			    static_cast<uint32_t>(std::clamp(std::atoi(rumble), 0, 100));
 +		}
@@ -229,7 +229,7 @@ index fa21e965..0bc85692 100644
  
  void FinishReport(std::array<uint8_t, REPORT_BYTES>& report) {
 diff --git a/src/libs/dualSenseHaptics.cpp b/src/libs/dualSenseHaptics.cpp
-index d72789c0..21d01299 100644
+index d72789c0..fa7b726d 100644
 --- a/src/libs/dualSenseHaptics.cpp
 +++ b/src/libs/dualSenseHaptics.cpp
 @@ -102,9 +102,10 @@ bool RouteSpeaker(int controller, bool speaker) { // Caller holds g_mutex.
@@ -257,11 +257,11 @@ index d72789c0..21d01299 100644
  
 +bool WirelessFeatureEnabled(bool speaker) {
 +	static const bool speaker_enabled = [] {
-+		const char* value = std::getenv("ASTROHYBRID_DS_WIRELESS_SPEAKER");
++		const char* value = std::getenv("AKIBOT_DS_WIRELESS_SPEAKER");
 +		return value == nullptr || std::strcmp(value, "0") != 0;
 +	}();
 +	static const bool haptics_enabled = [] {
-+		const char* value = std::getenv("ASTROHYBRID_DS_WIRELESS_HAPTICS");
++		const char* value = std::getenv("AKIBOT_DS_WIRELESS_HAPTICS");
 +		return value == nullptr || std::strcmp(value, "0") != 0;
 +	}();
 +	return speaker ? speaker_enabled : haptics_enabled;
@@ -368,5 +368,5 @@ index 3cfed8b9..77de9b02 100644
  
  
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

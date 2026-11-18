@@ -19,7 +19,7 @@ index 227a176f..8f4a8b97 100644
 --- a/src/hybrid/kytyGpuBridge.cpp
 +++ b/src/hybrid/kytyGpuBridge.cpp
 @@ -293,6 +293,13 @@ void Relay() {
- 	const char* motion_env = std::getenv("ASTROHYBRID_PAD_MOTION");
+ 	const char* motion_env = std::getenv("AKIBOT_PAD_MOTION");
  	const bool  motion     = motion_env != nullptr && motion_env[0] == '1' && g_host.publish_pad_motion != nullptr;
  	bool        motion_seen = false;
 +	// A pad without a gyroscope (Kyty's emulated tilt: View/Back, then the right stick) reports its

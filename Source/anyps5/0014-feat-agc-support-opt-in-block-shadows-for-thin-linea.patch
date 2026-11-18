@@ -1,7 +1,7 @@
-From f395495079b011429d496d933ab4ade28ed7e3d7 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Fri, 30 Oct 2026 03:03:53 +0000
-Subject: [PATCH 14/26] feat(agc): support opt-in block shadows for thin linear
+Subject: [PATCH 14/27] feat(agc): support opt-in block shadows for thin linear
  storage images
 
 ---
@@ -86,5 +86,5 @@ index 408f1becf3..ce3d5dfd0e 100644
          if (results[0].memory != results[1].memory) {
              std::size_t differ = 0;
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

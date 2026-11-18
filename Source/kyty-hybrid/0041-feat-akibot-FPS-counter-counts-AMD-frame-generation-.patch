@@ -1,0 +1,117 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Razoc <razoc@users.noreply.github.com>
+Date: Tue, 17 Nov 2026 23:29:20 +0100
+Subject: [PATCH 41/42] feat(akibot): FPS counter counts AMD frame generation
+ frames
+
+FsrFrameGen::ShownPerGameFrame(): once a second, AMD's present count
+(pOutGetLastPresentCountFFXAPI) against the game frames presented through
+it. The performance overlay takes the larger of the NVIDIA and AMD
+ratios, so it shows "N FPS on screen" and "game x ratio frame gen" with
+either.
+
+Checked in Sky Garden, FSR 3 frame generation: "116 FPS on screen,
+58 game x2.0 frame gen".
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../host_gpu/renderer/fsrFrameGen.cpp         | 27 +++++++++++++++++++
+ src/graphics/host_gpu/renderer/fsrFrameGen.h  |  2 ++
+ .../presentation/performanceOverlay.cpp       |  4 ++-
+ 3 files changed, 32 insertions(+), 1 deletion(-)
+
+diff --git a/src/graphics/host_gpu/renderer/fsrFrameGen.cpp b/src/graphics/host_gpu/renderer/fsrFrameGen.cpp
+index 98b32bd9..798f0891 100644
+--- a/src/graphics/host_gpu/renderer/fsrFrameGen.cpp
++++ b/src/graphics/host_gpu/renderer/fsrFrameGen.cpp
+@@ -46,6 +46,9 @@ uint32_t ExtraQueues() {
+ bool Active() {
+ 	return false;
+ }
++double ShownPerGameFrame() {
++	return 1.0;
++}
+ bool CreateSwapchain(PFN_vkGetDeviceProcAddr, VkPhysicalDevice, VkDevice, const Queues&, VkSwapchainCreateInfoKHR,
+                      VkSwapchainKHR*) {
+ 	return false;
+@@ -80,6 +83,11 @@ struct State {
+ 	uint64_t                                    prepares    = 0;
+ 	uint64_t                                    failures    = 0;
+ 	uint64_t                                    last_count  = 0;
++	// FPS counter: AMD present count against game presents, once a second.
++	std::atomic<double>                         shown_ratio {1.0};
++	int64_t                                     ratio_ns     = 0;
++	uint64_t                                    ratio_count  = 0;
++	uint64_t                                    ratio_games  = 0;
+ };
+ 
+ State& Get() {
+@@ -148,6 +156,10 @@ bool Active() {
+ 	return Get().active.load(std::memory_order_acquire);
+ }
+ 
++double ShownPerGameFrame() {
++	return Active() ? Get().shown_ratio.load(std::memory_order_relaxed) : 1.0;
++}
++
+ bool CreateSwapchain(PFN_vkGetDeviceProcAddr device_proc_addr, VkPhysicalDevice physical, VkDevice device,
+                      const Queues& queues, VkSwapchainCreateInfoKHR info, VkSwapchainKHR* swapchain) {
+ 	auto&            s = Get();
+@@ -277,6 +289,21 @@ VkResult QueuePresent(VkQueue queue, const VkPresentInfoKHR* info) {
+ 	present.pNext            = nullptr; // no present ID / low-latency chains through AMD's swapchain
+ 	const auto result        = s.functions.pOutQueuePresentKHR(queue, &present);
+ 	const auto now           = NowNs();
++	if (s.functions.pOutGetLastPresentCountFFXAPI != nullptr) {
++		s.ratio_games++;
++		if (s.ratio_ns == 0) {
++			s.ratio_ns    = now;
++			s.ratio_count = s.functions.pOutGetLastPresentCountFFXAPI(s.swapchain);
++			s.ratio_games = 0;
++		} else if (now - s.ratio_ns >= 1'000'000'000LL && s.ratio_games != 0) {
++			const uint64_t count = s.functions.pOutGetLastPresentCountFFXAPI(s.swapchain);
++			const double   ratio = static_cast<double>(count - s.ratio_count) / static_cast<double>(s.ratio_games);
++			s.shown_ratio.store(std::clamp(ratio, 1.0, 4.0), std::memory_order_relaxed);
++			s.ratio_ns    = now;
++			s.ratio_count = count;
++			s.ratio_games = 0;
++		}
++	}
+ 	if (s.print_ns == 0) {
+ 		s.print_ns = now;
+ 	} else if (now - s.print_ns >= 10'000'000'000LL) {
+diff --git a/src/graphics/host_gpu/renderer/fsrFrameGen.h b/src/graphics/host_gpu/renderer/fsrFrameGen.h
+index 6dba8936..d9ebfb2d 100644
+--- a/src/graphics/host_gpu/renderer/fsrFrameGen.h
++++ b/src/graphics/host_gpu/renderer/fsrFrameGen.h
+@@ -17,6 +17,8 @@ namespace Libs::Graphics::FsrFrameGen {
+ [[nodiscard]] bool     Requested();
+ [[nodiscard]] bool     Active(); // the swapchain is AMD's
+ [[nodiscard]] uint32_t ExtraQueues();
++// Frames shown per game frame over the last second (1.0 when off), for the FPS counter.
++[[nodiscard]] double   ShownPerGameFrame();
+ 
+ struct Queues {
+ 	VkQueue  game          = VK_NULL_HANDLE;
+diff --git a/src/graphics/presentation/performanceOverlay.cpp b/src/graphics/presentation/performanceOverlay.cpp
+index 749a55c0..c1da9d78 100644
+--- a/src/graphics/presentation/performanceOverlay.cpp
++++ b/src/graphics/presentation/performanceOverlay.cpp
+@@ -1,4 +1,5 @@
+ #include "graphics/presentation/performanceOverlay.h"
++#include "graphics/host_gpu/renderer/fsrFrameGen.h"
+ #include "graphics/presentation/videoOut.h"
+ 
+ #include "common/debugCounters.h"
+@@ -748,7 +749,8 @@ float DrawPerformanceOverlay(const GraphicContext& graphics, vk::Extent2D extent
+ 	const bool open = ImGui::Begin("##kyty_performance_overlay", nullptr, FLAGS);
+ 	// AKIBOT_DLSSG (frameGen.h): with frame generation the screen shows more frames than the
+ 	// game renders; both are shown.
+-	const double generated = Graphics::FrameGen::ShownPerGameFrame();
++	// NVIDIA or AMD frame generation (AkiBot): frames shown per game frame.
++	const double generated = std::max(Graphics::FrameGen::ShownPerGameFrame(), Graphics::FsrFrameGen::ShownPerGameFrame());
+ 	const bool   frame_gen = generated > 1.05;
+ 	if (open && fps_only) {
+ 		if (shown.fps > 0.0 && frame_gen) {
+-- 
+2.56.0.windows.4
+

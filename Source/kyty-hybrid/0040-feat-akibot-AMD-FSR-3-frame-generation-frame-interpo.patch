@@ -1,0 +1,729 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Razoc <razoc@users.noreply.github.com>
+Date: Tue, 17 Nov 2026 23:19:15 +0100
+Subject: [PATCH 40/42] feat(akibot): AMD FSR 3 frame generation (frame
+ interpolation swapchain)
+
+AKIBOT_FSRFG=1 (KYTY_FFX_SDK_DIR build, amd_fidelityfx_vk.dll next
+to the game; ignored when NVIDIA frame generation is on) replaces the
+window's swapchain with AMD's frame interpolation swapchain
+(renderer/fsrFrameGen.*): create, images, acquire, present and destroy
+go through AMD's replacement functions. At the game's temporal upscale
+pass the frame's depth, motion vectors, jitter and camera are handed to
+it (configure + prepare dispatch), and it presents one generated frame
+between two rendered ones.
+
+AMD requires four distinct queues (game, async compute, present, image
+acquire): the device now asks for three more queues of the graphics
+family when frame generation is requested. AKIBOT_FSRFG_PROBE=1
+reports which swapchain variants the surface accepts (diagnostic).
+
+In-game menu: frame generation adds "AMD FSR 3 (x2)".
+
+Checked in Sky Garden (01.007.000), FSR upscaling + FSR frame
+generation, game capped at 60: ~1,100 frames shown per 10 s for ~550
+prepared (2.0x), no failure, picture clean.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/graphics/host_gpu/graphicContext.h        |   6 +
+ src/graphics/host_gpu/renderer/dlss.cpp       |  18 +-
+ .../host_gpu/renderer/fsrFrameGen.cpp         | 354 ++++++++++++++++++
+ src/graphics/host_gpu/renderer/fsrFrameGen.h  |  52 +++
+ src/graphics/host_gpu/renderer/renderDraw.cpp |   7 +-
+ src/graphics/presentation/akibotMenu.cpp      |   3 +-
+ .../presentation/window/swapchain.cpp         |  54 ++-
+ .../presentation/window/vulkanWindow.cpp      |  19 +-
+ 8 files changed, 496 insertions(+), 17 deletions(-)
+ create mode 100644 src/graphics/host_gpu/renderer/fsrFrameGen.cpp
+ create mode 100644 src/graphics/host_gpu/renderer/fsrFrameGen.h
+
+diff --git a/src/graphics/host_gpu/graphicContext.h b/src/graphics/host_gpu/graphicContext.h
+index ed299289..ce9ace2f 100644
+--- a/src/graphics/host_gpu/graphicContext.h
++++ b/src/graphics/host_gpu/graphicContext.h
+@@ -141,6 +141,12 @@ struct GraphicContext {
+ 	// UploadDma worker submits to it. Buffers it touches are created shared by both families.
+ 	uint32_t                           transfer_queue_family = static_cast<uint32_t>(-1);
+ 	vk::Queue                          transfer_queue        = nullptr;
++	// AkiBot AKIBOT_FSRFG (renderer/fsrFrameGen.h): two more queues of queue_family for AMD's
++	// frame interpolation swapchain (present, image acquire); null when off or the family has too few.
++	uint32_t                           fsr_queue_index   = 0;
++	vk::Queue                          fsr_present_queue = nullptr;
++	vk::Queue                          fsr_acquire_queue = nullptr;
++	vk::Queue                          fsr_compute_queue = nullptr;
+ 
+ 	[[nodiscard]] const vk::PhysicalDeviceProperties& GetPhysicalDeviceProperties() const {
+ 		return physical_device_properties;
+diff --git a/src/graphics/host_gpu/renderer/dlss.cpp b/src/graphics/host_gpu/renderer/dlss.cpp
+index ba4bb79f..b09d4d46 100644
+--- a/src/graphics/host_gpu/renderer/dlss.cpp
++++ b/src/graphics/host_gpu/renderer/dlss.cpp
+@@ -1,5 +1,6 @@
+ #include "graphics/host_gpu/renderer/dlss.h"
+ #include "graphics/host_gpu/renderer/frameGen.h"
++#include "graphics/host_gpu/renderer/fsrFrameGen.h"
+ 
+ #include "graphics/host_gpu/renderer/cache/textureCache.h"
+ #include "graphics/host_gpu/renderer/colorRenderTarget.h"
+@@ -370,7 +371,7 @@ bool ReadPass(const State& s, const PreparedBindings& pixel, PassInfo& info) {
+ 
+ void RenderExecutor::NoteFrameGenCamera(const PreparedBindings& stage) {
+ 	const bool camera_wanted = FrameGen::CameraWanted();
+-	if (!camera_wanted && !Dlss::UpscaleRequested()) {
++	if (!camera_wanted && !Dlss::UpscaleRequested() && !FsrFrameGen::Active()) {
+ 		return;
+ 	}
+ 	// The game's per-view constants: a perspective projection (16:9) at offset 128 of a 576-byte
+@@ -404,7 +405,7 @@ void RenderExecutor::NoteFrameGenCamera(const PreparedBindings& stage) {
+ }
+ 
+ void RenderExecutor::TagFrameGen(CommandBuffer& buffer, PreparedBindings& pixel) {
+-	if (!FrameGen::Active() || pixel.runtime == nullptr || !*pixel.runtime) {
++	if ((!FrameGen::Active() && !FsrFrameGen::Active()) || pixel.runtime == nullptr || !*pixel.runtime) {
+ 		return;
+ 	}
+ 	auto&    s = Get();
+@@ -464,7 +465,16 @@ void RenderExecutor::TagFrameGen(CommandBuffer& buffer, PreparedBindings& pixel)
+ 		in.flags  = static_cast<uint32_t>(static_cast<VkImageCreateFlags>(image.backing.flags));
+ 		return in;
+ 	};
+-	if (views[0] && views[1]) {
++	if (FsrFrameGen::Active()) {
++		// AMD frame generation reads the images itself (no views needed).
++		FsrFrameGen::Image fsr_depth {static_cast<VkImage>(depth.backing.image), static_cast<VkFormat>(depth.backing.format),
++		                              depth.info.extent.width, depth.info.extent.height, true};
++		FsrFrameGen::Image fsr_mv {static_cast<VkImage>(mv.backing.image), static_cast<VkFormat>(mv.backing.format),
++		                           mv.info.extent.width, mv.info.extent.height, false};
++		const float scale[2] {-static_cast<float>(in_w), -static_cast<float>(in_h)};
++		FsrFrameGen::Prepare(static_cast<VkCommandBuffer>(cmd), fsr_depth, fsr_mv, pass.jitter_px, scale,
++		                     s.camera_near, s.camera_far, s.camera_fov);
++	} else if (views[0] && views[1]) {
+ 		(void)FrameGen::TagFrame(static_cast<VkCommandBuffer>(cmd), input(depth, views[0]),
+ 		                         input(mv, views[1]), jitter_uv, in_w, in_h);
+ 	}
+@@ -479,7 +489,7 @@ void RenderExecutor::TagFrameGen(CommandBuffer& buffer, PreparedBindings& pixel)
+ }
+ 
+ void RenderExecutor::NoteDlssTargets(std::span<const RenderColorInfo> colors, ImageId depth) {
+-	if ((!Dlss::UpscaleRequested() && !FrameGen::Requested()) || !depth) {
++	if ((!Dlss::UpscaleRequested() && !FrameGen::Requested() && !FsrFrameGen::Requested()) || !depth) {
+ 		return;
+ 	}
+ 	auto& s = Get();
+diff --git a/src/graphics/host_gpu/renderer/fsrFrameGen.cpp b/src/graphics/host_gpu/renderer/fsrFrameGen.cpp
+new file mode 100644
+index 00000000..98b32bd9
+--- /dev/null
++++ b/src/graphics/host_gpu/renderer/fsrFrameGen.cpp
+@@ -0,0 +1,354 @@
++#include "graphics/host_gpu/renderer/fsrFrameGen.h"
++
++#include "graphics/host_gpu/renderer/frameGen.h"
++
++#if KYTY_FFX
++#include <ffx_api/ffx_api.h>
++#include <ffx_api/ffx_framegeneration.h>
++#include <ffx_api/vk/ffx_api_vk.h>
++#endif
++
++#include <algorithm>
++#include <atomic>
++#include <chrono>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
++#include <mutex>
++#include <string>
++
++namespace Libs::Graphics::FsrFrameGen {
++
++bool Requested() {
++#if KYTY_FFX
++	static const bool requested = [] {
++		const char* value = std::getenv("AKIBOT_FSRFG");
++		const bool  on    = value != nullptr && std::strcmp(value, "1") == 0;
++		if (on && FrameGen::Requested()) {
++			std::printf("FSR-FG: not used, NVIDIA frame generation (AKIBOT_DLSSG) is on\n");
++			std::fflush(stdout);
++			return false;
++		}
++		return on;
++	}();
++	return requested;
++#else
++	return false;
++#endif
++}
++
++uint32_t ExtraQueues() {
++	return Requested() ? 3u : 0u;
++}
++
++#if !KYTY_FFX
++
++bool Active() {
++	return false;
++}
++bool CreateSwapchain(PFN_vkGetDeviceProcAddr, VkPhysicalDevice, VkDevice, const Queues&, VkSwapchainCreateInfoKHR,
++                     VkSwapchainKHR*) {
++	return false;
++}
++void     DestroySwapchain(VkDevice, VkSwapchainKHR) {}
++VkResult GetSwapchainImages(VkDevice, VkSwapchainKHR, uint32_t*, VkImage*) {
++	return VK_ERROR_INITIALIZATION_FAILED;
++}
++VkResult AcquireNextImage(VkDevice, VkSwapchainKHR, uint64_t, VkSemaphore, VkFence, uint32_t*) {
++	return VK_ERROR_INITIALIZATION_FAILED;
++}
++VkResult QueuePresent(VkQueue, const VkPresentInfoKHR*) {
++	return VK_ERROR_INITIALIZATION_FAILED;
++}
++void Prepare(VkCommandBuffer, const Image&, const Image&, const float*, const float*, float, float, float) {}
++
++#else
++
++namespace {
++
++struct State {
++	std::mutex                                  mutex;
++	std::atomic<bool>                           active {false};
++	ffxContext                                  swapchain_context = nullptr;
++	ffxContext                                  fg_context        = nullptr;
++	ffxQueryDescSwapchainReplacementFunctionsVK functions {};
++	VkSwapchainKHR                              swapchain = VK_NULL_HANDLE;
++	uint32_t                                    width = 0, height = 0;
++	uint64_t                                    frame_id    = 0;
++	int64_t                                     last_ns     = 0;
++	int64_t                                     print_ns    = 0;
++	uint64_t                                    prepares    = 0;
++	uint64_t                                    failures    = 0;
++	uint64_t                                    last_count  = 0;
++};
++
++State& Get() {
++	static State state;
++	return state;
++}
++
++int64_t NowNs() {
++	return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch())
++	    .count();
++}
++
++// AMD's runtime asks for some core functions by their old extension names and calls them unchecked.
++PFN_vkGetDeviceProcAddr g_real_gdpa = nullptr;
++PFN_vkVoidFunction VKAPI_PTR DeviceProcAddr(VkDevice device, const char* name) {
++	auto fn = g_real_gdpa != nullptr ? g_real_gdpa(device, name) : nullptr;
++	if (fn == nullptr && g_real_gdpa != nullptr) {
++		const size_t length = std::strlen(name);
++		if (length > 3 && std::strcmp(name + length - 3, "KHR") == 0) {
++			const std::string core(name, length - 3);
++			fn = g_real_gdpa(device, core.c_str());
++		}
++	}
++	return fn;
++}
++
++// AMD's messages (errors and warnings) to the console.
++void Message(uint32_t type, const wchar_t* message) {
++	std::printf("FSR-FG message %u: %ls\n", type, message != nullptr ? message : L"");
++	std::fflush(stdout);
++}
++
++ffxReturnCode_t Generate(ffxDispatchDescFrameGeneration* params, void* context) {
++	return ffxDispatch(static_cast<ffxContext*>(context), &params->header);
++}
++
++FfxApiResource Resource(const Image& image) {
++	FfxApiResourceDescription desc {};
++	desc.type     = FFX_API_RESOURCE_TYPE_TEXTURE2D;
++	desc.format   = ffxApiGetSurfaceFormatVK(image.format);
++	desc.width    = image.width;
++	desc.height   = image.height;
++	desc.depth    = 1;
++	desc.mipCount = 1;
++	desc.flags    = FFX_API_RESOURCE_FLAGS_NONE;
++	desc.usage    = image.depth ? FFX_API_RESOURCE_USAGE_DEPTHTARGET : FFX_API_RESOURCE_USAGE_READ_ONLY;
++	return ffxApiGetResourceVK(reinterpret_cast<void*>(image.image), desc, FFX_API_RESOURCE_STATE_PIXEL_COMPUTE_READ);
++}
++
++void DestroyLocked(State& s) {
++	s.active.store(false, std::memory_order_release);
++	if (s.fg_context != nullptr) {
++		ffxDestroyContext(&s.fg_context, nullptr);
++		s.fg_context = nullptr;
++	}
++	if (s.swapchain_context != nullptr) {
++		ffxDestroyContext(&s.swapchain_context, nullptr); // destroys the swapchain too
++		s.swapchain_context = nullptr;
++	}
++	s.swapchain = VK_NULL_HANDLE;
++}
++
++} // namespace
++
++bool Active() {
++	return Get().active.load(std::memory_order_acquire);
++}
++
++bool CreateSwapchain(PFN_vkGetDeviceProcAddr device_proc_addr, VkPhysicalDevice physical, VkDevice device,
++                     const Queues& queues, VkSwapchainCreateInfoKHR info, VkSwapchainKHR* swapchain) {
++	auto&            s = Get();
++	std::scoped_lock lock(s.mutex);
++	DestroyLocked(s);
++	if (queues.present == VK_NULL_HANDLE || queues.image_acquire == VK_NULL_HANDLE || queues.compute == VK_NULL_HANDLE) {
++		std::printf("FSR-FG: the device has no spare queues, frame generation off\n");
++		std::fflush(stdout);
++		return false;
++	}
++	g_real_gdpa = device_proc_addr;
++	info.pNext  = nullptr;
++	// Diagnostic (AKIBOT_FSRFG_PROBE=1): which swapchain variants Vulkan accepts on this surface.
++	if (const char* probe = std::getenv("AKIBOT_FSRFG_PROBE"); probe != nullptr && probe[0] == '1') {
++		auto create_fn  = reinterpret_cast<PFN_vkCreateSwapchainKHR>(device_proc_addr(device, "vkCreateSwapchainKHR"));
++		auto destroy_fn = reinterpret_cast<PFN_vkDestroySwapchainKHR>(device_proc_addr(device, "vkDestroySwapchainKHR"));
++		const auto try_info = [&](const char* what, VkSwapchainCreateInfoKHR variant) {
++			VkSwapchainKHR test   = VK_NULL_HANDLE;
++			const auto     result = create_fn(device, &variant, nullptr, &test);
++			std::printf("FSR-FG probe %s: %d (images %u, usage 0x%x, mode %d, format %d)\n", what,
++			            static_cast<int>(result), variant.minImageCount, variant.imageUsage,
++			            static_cast<int>(variant.presentMode), static_cast<int>(variant.imageFormat));
++			std::fflush(stdout);
++			if (test != VK_NULL_HANDLE) {
++				destroy_fn(device, test, nullptr);
++			}
++		};
++		try_info("as is", info);
++		auto more = info;
++		more.minImageCount += 2;
++		try_info("+2 images", more);
++		auto usage = info;
++		usage.imageUsage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
++		try_info("+usages", usage);
++		auto fifo = info;
++		fifo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
++		try_info("fifo", fifo);
++	}
++
++	VkSwapchainKHR                               handle = VK_NULL_HANDLE;
++	ffxCreateContextDescFrameGenerationSwapChainVK create {};
++	create.header.type       = FFX_API_CREATE_CONTEXT_DESC_TYPE_FGSWAPCHAIN_VK;
++	create.physicalDevice    = physical;
++	create.device            = device;
++	create.swapchain         = &handle;
++	create.allocator         = nullptr;
++	create.createInfo        = info;
++	create.gameQueue         = {queues.game, queues.family, nullptr};
++	create.asyncComputeQueue = {queues.compute, queues.family, nullptr};
++	create.presentQueue      = {queues.present, queues.family, nullptr};
++	create.imageAcquireQueue = {queues.image_acquire, queues.family, nullptr};
++	ffxConfigureDescGlobalDebug1 debug {};
++	debug.header.type = FFX_API_CONFIGURE_DESC_TYPE_GLOBALDEBUG1;
++	debug.fpMessage   = &Message;
++	debug.debugLevel  = FFX_API_CONFIGURE_GLOBALDEBUG_LEVEL_WARNINGS;
++	create.header.pNext = &debug.header;
++	auto result              = ffxCreateContext(&s.swapchain_context, &create.header, nullptr);
++	if (result != FFX_API_RETURN_OK || handle == VK_NULL_HANDLE) {
++		std::printf("FSR-FG: swapchain creation failed (%u)\n", static_cast<unsigned>(result));
++		std::fflush(stdout);
++		s.swapchain_context = nullptr;
++		return false;
++	}
++	s.functions             = {};
++	s.functions.header.type = FFX_API_QUERY_DESC_TYPE_FGSWAPCHAIN_FUNCTIONS_VK;
++	result                  = ffxQuery(&s.swapchain_context, &s.functions.header);
++	if (result != FFX_API_RETURN_OK || s.functions.pOutQueuePresentKHR == nullptr ||
++	    s.functions.pOutAcquireNextImageKHR == nullptr || s.functions.pOutGetSwapchainImagesKHR == nullptr) {
++		std::printf("FSR-FG: swapchain functions unavailable (%u)\n", static_cast<unsigned>(result));
++		std::fflush(stdout);
++		DestroyLocked(s);
++		return false;
++	}
++
++	ffxCreateBackendVKDesc backend {};
++	backend.header.type      = FFX_API_CREATE_CONTEXT_DESC_TYPE_BACKEND_VK;
++	backend.vkDevice         = device;
++	backend.vkPhysicalDevice = physical;
++	backend.vkDeviceProcAddr = &DeviceProcAddr;
++	ffxCreateContextDescFrameGeneration fg {};
++	fg.header.type      = FFX_API_CREATE_CONTEXT_DESC_TYPE_FRAMEGENERATION;
++	fg.header.pNext     = &backend.header;
++	fg.flags            = FFX_FRAMEGENERATION_ENABLE_MOTION_VECTORS_JITTER_CANCELLATION;
++	fg.displaySize      = {info.imageExtent.width, info.imageExtent.height};
++	fg.maxRenderSize    = {std::max(info.imageExtent.width, 3840u), std::max(info.imageExtent.height, 2160u)};
++	fg.backBufferFormat = ffxApiGetSurfaceFormatVK(info.imageFormat);
++	result              = ffxCreateContext(&s.fg_context, &fg.header, nullptr);
++	if (result != FFX_API_RETURN_OK || s.fg_context == nullptr) {
++		std::printf("FSR-FG: frame generation context failed (%u)\n", static_cast<unsigned>(result));
++		std::fflush(stdout);
++		s.fg_context = nullptr;
++		DestroyLocked(s);
++		return false;
++	}
++	s.swapchain = handle;
++	s.width     = info.imageExtent.width;
++	s.height    = info.imageExtent.height;
++	s.frame_id  = 0;
++	s.last_ns   = 0;
++	*swapchain  = handle;
++	s.active.store(true, std::memory_order_release);
++	std::printf("FSR-FG: AMD frame interpolation swapchain %ux%u, frame generation on\n", s.width, s.height);
++	std::fflush(stdout);
++	return true;
++}
++
++void DestroySwapchain(VkDevice device, VkSwapchainKHR swapchain) {
++	(void)device;
++	(void)swapchain;
++	auto&            s = Get();
++	std::scoped_lock lock(s.mutex);
++	DestroyLocked(s);
++}
++
++VkResult GetSwapchainImages(VkDevice device, VkSwapchainKHR swapchain, uint32_t* count, VkImage* images) {
++	return Get().functions.pOutGetSwapchainImagesKHR(device, swapchain, count, images);
++}
++
++VkResult AcquireNextImage(VkDevice device, VkSwapchainKHR swapchain, uint64_t timeout, VkSemaphore semaphore,
++                          VkFence fence, uint32_t* index) {
++	return Get().functions.pOutAcquireNextImageKHR(device, swapchain, timeout, semaphore, fence, index);
++}
++
++VkResult QueuePresent(VkQueue queue, const VkPresentInfoKHR* info) {
++	auto&            s       = Get();
++	VkPresentInfoKHR present = *info;
++	present.pNext            = nullptr; // no present ID / low-latency chains through AMD's swapchain
++	const auto result        = s.functions.pOutQueuePresentKHR(queue, &present);
++	const auto now           = NowNs();
++	if (s.print_ns == 0) {
++		s.print_ns = now;
++	} else if (now - s.print_ns >= 10'000'000'000LL) {
++		const uint64_t count = s.functions.pOutGetLastPresentCountFFXAPI != nullptr
++		                           ? s.functions.pOutGetLastPresentCountFFXAPI(s.swapchain)
++		                           : 0;
++		std::printf("FSR-FG 10s: %llu frames shown, %llu prepared (%llu failed)\n",
++		            static_cast<unsigned long long>(count - s.last_count),
++		            static_cast<unsigned long long>(s.prepares), static_cast<unsigned long long>(s.failures));
++		std::fflush(stdout);
++		s.last_count = count;
++		s.prepares   = 0;
++		s.failures   = 0;
++		s.print_ns   = now;
++	}
++	return result;
++}
++
++void Prepare(VkCommandBuffer cmd, const Image& depth, const Image& motion, const float jitter_px[2],
++             const float mv_scale[2], float near_plane, float far_plane, float fov) {
++	auto&            s = Get();
++	std::scoped_lock lock(s.mutex);
++	if (!s.active.load(std::memory_order_acquire) || s.fg_context == nullptr) {
++		return;
++	}
++	s.frame_id++;
++	ffxConfigureDescFrameGeneration config {};
++	config.header.type                        = FFX_API_CONFIGURE_DESC_TYPE_FRAMEGENERATION;
++	config.swapChain                          = reinterpret_cast<void*>(s.swapchain);
++	config.presentCallback                    = nullptr;
++	config.presentCallbackUserContext         = nullptr;
++	config.frameGenerationCallback            = &Generate;
++	config.frameGenerationCallbackUserContext = &s.fg_context;
++	config.frameGenerationEnabled             = true;
++	config.allowAsyncWorkloads                = false;
++	config.HUDLessColor                       = {};
++	config.flags                              = 0;
++	config.onlyPresentGenerated               = false;
++	config.generationRect = {0, 0, static_cast<int32_t>(s.width), static_cast<int32_t>(s.height)};
++	config.frameID        = s.frame_id;
++	auto result           = ffxConfigure(&s.fg_context, &config.header);
++	if (result != FFX_API_RETURN_OK) {
++		s.failures++;
++		return;
++	}
++	const auto now = NowNs();
++	ffxDispatchDescFrameGenerationPrepare prepare {};
++	prepare.header.type             = FFX_API_DISPATCH_DESC_TYPE_FRAMEGENERATION_PREPARE;
++	prepare.frameID                 = s.frame_id;
++	prepare.flags                   = 0;
++	prepare.commandList             = reinterpret_cast<void*>(cmd);
++	prepare.renderSize              = {motion.width, motion.height};
++	prepare.jitterOffset            = {jitter_px[0], jitter_px[1]};
++	prepare.motionVectorScale       = {mv_scale[0], mv_scale[1]};
++	prepare.frameTimeDelta          = s.last_ns == 0 ? 16.6f
++	                                                 : std::clamp(static_cast<float>(now - s.last_ns) / 1.0e6f, 1.0f, 100.0f);
++	s.last_ns                       = now;
++	prepare.unused_reset            = false;
++	prepare.cameraNear              = near_plane;
++	prepare.cameraFar               = far_plane;
++	prepare.cameraFovAngleVertical  = fov;
++	prepare.viewSpaceToMetersFactor = 1.0f;
++	prepare.depth                   = Resource(depth);
++	prepare.motionVectors           = Resource(motion);
++	result                          = ffxDispatch(&s.fg_context, &prepare.header);
++	if (result != FFX_API_RETURN_OK) {
++		s.failures++;
++		return;
++	}
++	s.prepares++;
++}
++
++#endif
++
++} // namespace Libs::Graphics::FsrFrameGen
+diff --git a/src/graphics/host_gpu/renderer/fsrFrameGen.h b/src/graphics/host_gpu/renderer/fsrFrameGen.h
+new file mode 100644
+index 00000000..6dba8936
+--- /dev/null
++++ b/src/graphics/host_gpu/renderer/fsrFrameGen.h
+@@ -0,0 +1,52 @@
++#ifndef EMULATOR_SRC_GRAPHICS_HOST_GPU_RENDERER_FSRFRAMEGEN_H_
++#define EMULATOR_SRC_GRAPHICS_HOST_GPU_RENDERER_FSRFRAMEGEN_H_
++
++#include <cstdint>
++
++#include <vulkan/vulkan.h>
++
++// AkiBot: AKIBOT_FSRFG=1 (default off; build with KYTY_FFX_SDK_DIR, amd_fidelityfx_vk.dll next to
++// the game): AMD FSR 3.1 frame generation. AMD's frame interpolation swapchain replaces the window's
++// swapchain (create, images, acquire, present, destroy); at the game's temporal upscale pass (dlss.cpp)
++// the frame's depth, motion vectors and camera are handed to it, and it presents one generated frame
++// between two rendered ones. Not together with NVIDIA frame generation (AKIBOT_DLSSG wins).
++// The swapchain needs three more queues of the graphics family (present, image acquire, async compute), asked for at
++// device creation (ExtraQueues). One "FSR-FG 10s:" console line every 10 s.
++namespace Libs::Graphics::FsrFrameGen {
++
++[[nodiscard]] bool     Requested();
++[[nodiscard]] bool     Active(); // the swapchain is AMD's
++[[nodiscard]] uint32_t ExtraQueues();
++
++struct Queues {
++	VkQueue  game          = VK_NULL_HANDLE;
++	uint32_t family        = 0;
++	VkQueue  present       = VK_NULL_HANDLE;
++	VkQueue  image_acquire = VK_NULL_HANDLE;
++	VkQueue  compute       = VK_NULL_HANDLE; // AMD wants all four queues distinct
++};
++
++// Swapchain replacement (window thread). False: AMD's swapchain could not be created, use Vulkan's.
++bool     CreateSwapchain(PFN_vkGetDeviceProcAddr device_proc_addr, VkPhysicalDevice physical, VkDevice device,
++                         const Queues& queues, VkSwapchainCreateInfoKHR info, VkSwapchainKHR* swapchain);
++void     DestroySwapchain(VkDevice device, VkSwapchainKHR swapchain);
++VkResult GetSwapchainImages(VkDevice device, VkSwapchainKHR swapchain, uint32_t* count, VkImage* images);
++VkResult AcquireNextImage(VkDevice device, VkSwapchainKHR swapchain, uint64_t timeout, VkSemaphore semaphore,
++                          VkFence fence, uint32_t* index);
++VkResult QueuePresent(VkQueue queue, const VkPresentInfoKHR* info);
++
++struct Image {
++	VkImage  image  = VK_NULL_HANDLE;
++	VkFormat format = VK_FORMAT_UNDEFINED;
++	uint32_t width = 0, height = 0;
++	bool     depth = false;
++};
++
++// At the temporal upscale pass (GPU thread): this frame's inputs, recorded into cmd. Jitter in input
++// pixels, motion-vector scale as for DLSS. Both images are in SHADER_READ_ONLY_OPTIMAL.
++void Prepare(VkCommandBuffer cmd, const Image& depth, const Image& motion, const float jitter_px[2],
++             const float mv_scale[2], float near_plane, float far_plane, float fov);
++
++} // namespace Libs::Graphics::FsrFrameGen
++
++#endif // EMULATOR_SRC_GRAPHICS_HOST_GPU_RENDERER_FSRFRAMEGEN_H_
+diff --git a/src/graphics/host_gpu/renderer/renderDraw.cpp b/src/graphics/host_gpu/renderer/renderDraw.cpp
+index c72a0b1d..54a77d6e 100644
+--- a/src/graphics/host_gpu/renderer/renderDraw.cpp
++++ b/src/graphics/host_gpu/renderer/renderDraw.cpp
+@@ -1,3 +1,4 @@
++#include "graphics/host_gpu/renderer/fsrFrameGen.h"
+ #include "graphics/host_gpu/renderer/renderDraw.h"
+ 
+ #include "graphics/host_gpu/renderer/drawPrep/ownedCounters.h"
+@@ -4166,15 +4167,15 @@ void RenderExecutor::ExecutePreparedDraw(uint64_t submit_id, CommandBuffer& buff
+ 	// AKIBOT_DLSS (dlss.h): depth attachments by colour target, and the game's temporal
+ 	// upscale replaced by DLSS Super Resolution. A replaced draw records nothing else; like a
+ 	// skipped one (KYTY_PIPELINE_SKIP below) no run record may be continued across it.
+-	if (Dlss::UpscaleRequested() || FrameGen::Requested()) [[unlikely]] {
++	if (Dlss::UpscaleRequested() || FrameGen::Requested() || FsrFrameGen::Requested()) [[unlikely]] {
+ 		NoteDlssTargets(std::span<const RenderColorInfo> {state.color_info, state.color_count},
+ 		                state.depth_info.image_id);
+ 		if (state.ps_active && bindings.pixel.has_value()) {
+ 			// The camera also gives DLSS its jitter in game version 01.007.000 (dlss.cpp, layout B).
+-			if (FrameGen::Active() || Dlss::UpscaleRequested()) {
++			if (FrameGen::Active() || Dlss::UpscaleRequested() || FsrFrameGen::Active()) {
+ 				NoteFrameGenCamera(*bindings.pixel);
+ 			}
+-			if (FrameGen::Active()) {
++			if (FrameGen::Active() || FsrFrameGen::Active()) {
+ 				TagFrameGen(buffer, *bindings.pixel);
+ 			}
+ 		}
+diff --git a/src/graphics/presentation/akibotMenu.cpp b/src/graphics/presentation/akibotMenu.cpp
+index 3422fccf..e3e43b17 100644
+--- a/src/graphics/presentation/akibotMenu.cpp
++++ b/src/graphics/presentation/akibotMenu.cpp
+@@ -82,7 +82,8 @@ const std::vector<Option>& Options() {
+ 	      {"AMD FSR 3.1", "AMD FSR 3.1"}},
+ 	     Live::No, false, 0},
+ 	    {Tab::Graphics, "fgmode", Kind::Choice, {"Frame Generation", "Frame Generation"},
+-	     {{"Désactivée", "Off"}, {"Auto (conseillé)", "Auto (recommended)"}, {"x2", "2x"}, {"x3", "3x"}, {"x4", "4x"}},
++	     {{"Désactivée", "Off"}, {"Auto (conseillé)", "Auto (recommended)"}, {"x2", "2x"}, {"x3", "3x"}, {"x4", "4x"},
++	      {"AMD FSR 3 (x2)", "AMD FSR 3 (2x)"}},
+ 	     Live::No, false, 0},
+ 	    {Tab::Graphics, "fgtarget", Kind::Choice, {"Objectif à l'écran", "On-screen target"},
+ 	     {{"Sans limite", "No lock"}, {"50 FPS", "50 FPS"}, {"60 FPS", "60 FPS"}, {"90 FPS", "90 FPS"},
+diff --git a/src/graphics/presentation/window/swapchain.cpp b/src/graphics/presentation/window/swapchain.cpp
+index cd514761..a2d53c6b 100644
+--- a/src/graphics/presentation/window/swapchain.cpp
++++ b/src/graphics/presentation/window/swapchain.cpp
+@@ -9,6 +9,7 @@
+ #include "gpu_blit_shaders/gpu_video_out_downscale_spv.h"
+ #include "gpu_blit_shaders/gpu_video_out_overlay_spv.h"
+ #include "graphics/host_gpu/graphicContext.h"
++#include "graphics/host_gpu/renderer/fsrFrameGen.h"
+ #include "graphics/host_gpu/renderer/render.h"
+ #include "graphics/host_gpu/renderer/renderContext.h"
+ #include "graphics/host_gpu/vulkanCommon.h"
+@@ -313,6 +314,7 @@ private:
+ 	// Drawable pixel size observed when this swapchain was created.
+ 	vk::Extent2D                   m_window_extent {};
+ 	bool                           m_minimized         = false;
++	bool                           m_fsr_fg            = false; // AkiBot AKIBOT_FSRFG: AMD swapchain
+ 	/// True when m_minimized was set because the surface/drawable extent was {0,0} but
+ 	/// WindowContext::minimized is false (e.g. compositor not ready). Cleared on successful
+ 	/// swapchain creation or Destroy().
+@@ -526,14 +528,39 @@ void Swapchain::Create() {
+ 	}
+ 	create_info.clipped = VK_TRUE;
+ 	create_info.pNext   = LowLatency::SwapchainCreateNext(create_info.pNext);
+-	RequireVulkanSuccess(graphics.device.createSwapchainKHR(&create_info, nullptr, &m_handle),
+-	                     "vkCreateSwapchainKHR");
++	// AkiBot AKIBOT_FSRFG: AMD's frame interpolation swapchain in place of this one.
++	m_fsr_fg = false;
++	if (FsrFrameGen::Requested()) {
++		FsrFrameGen::Queues queues;
++		queues.game          = static_cast<VkQueue>(graphics.queue);
++		queues.family        = graphics.queue_family;
++		queues.present       = static_cast<VkQueue>(graphics.fsr_present_queue);
++		queues.image_acquire = static_cast<VkQueue>(graphics.fsr_acquire_queue);
++		queues.compute       = static_cast<VkQueue>(graphics.fsr_compute_queue);
++		VkSwapchainKHR fsr_handle = VK_NULL_HANDLE;
++		m_fsr_fg = FsrFrameGen::CreateSwapchain(
++		    reinterpret_cast<PFN_vkGetDeviceProcAddr>(graphics.instance.getProcAddr("vkGetDeviceProcAddr")),
++		    static_cast<VkPhysicalDevice>(graphics.physical_device), static_cast<VkDevice>(graphics.device), queues,
++		    static_cast<VkSwapchainCreateInfoKHR>(create_info), &fsr_handle);
++		if (m_fsr_fg) {
++			m_handle = fsr_handle;
++		}
++	}
++	if (!m_fsr_fg) {
++		RequireVulkanSuccess(graphics.device.createSwapchainKHR(&create_info, nullptr, &m_handle),
++		                     "vkCreateSwapchainKHR");
++	}
+ 	EXIT_IF(m_handle == nullptr);
+ 	LowLatency::OnSwapchainCreated(static_cast<VkSwapchainKHR>(m_handle));
+ 	LOGF("Vulkan presentation: %s\n", m_hdr_active ? "HDR10 (PQ)" : "SDR");
+ 
+ 	m_images = EnumerateVulkan<vk::Image>(
+ 	    "vkGetSwapchainImagesKHR", [&](uint32_t* count, vk::Image* images) {
++		    if (m_fsr_fg) {
++			    return static_cast<vk::Result>(FsrFrameGen::GetSwapchainImages(
++			        static_cast<VkDevice>(graphics.device), static_cast<VkSwapchainKHR>(m_handle), count,
++			        reinterpret_cast<VkImage*>(images)));
++		    }
+ 		    return graphics.device.getSwapchainImagesKHR(m_handle, count, images);
+ 	    });
+ 	EXIT_NOT_IMPLEMENTED(m_images.empty());
+@@ -626,7 +653,12 @@ void Swapchain::Destroy() {
+ 	}
+ 	if (m_handle != nullptr) {
+ 		LowLatency::OnSwapchainDestroyed(static_cast<VkSwapchainKHR>(m_handle));
+-		graphics.device.destroySwapchainKHR(m_handle, nullptr);
++		if (m_fsr_fg) {
++			FsrFrameGen::DestroySwapchain(static_cast<VkDevice>(graphics.device), static_cast<VkSwapchainKHR>(m_handle));
++			m_fsr_fg = false;
++		} else {
++			graphics.device.destroySwapchainKHR(m_handle, nullptr);
++		}
+ 	}
+ 
+ 	m_handle        = nullptr;
+@@ -712,9 +744,14 @@ Swapchain::Status Swapchain::AcquireNextImage(CommandScheduler& scheduler) {
+ 		m_frame_ticks[m_frame_index] = 0;
+ 	}
+ 	m_image_index     = static_cast<uint32_t>(-1);
+-	const auto result = m_window.graphic_ctx.device.acquireNextImageKHR(
+-	    m_handle, std::numeric_limits<uint64_t>::max(), m_image_acquired[m_frame_index], nullptr,
+-	    &m_image_index);
++	const auto result =
++	    m_fsr_fg ? static_cast<vk::Result>(FsrFrameGen::AcquireNextImage(
++	                   static_cast<VkDevice>(m_window.graphic_ctx.device), static_cast<VkSwapchainKHR>(m_handle),
++	                   std::numeric_limits<uint64_t>::max(),
++	                   static_cast<VkSemaphore>(m_image_acquired[m_frame_index]), VK_NULL_HANDLE, &m_image_index))
++	             : m_window.graphic_ctx.device.acquireNextImageKHR(
++	                   m_handle, std::numeric_limits<uint64_t>::max(), m_image_acquired[m_frame_index], nullptr,
++	                   &m_image_index);
+ 	switch (result) {
+ 		case vk::Result::eSuccess: break;
+ 		case vk::Result::eSuboptimalKHR:
+@@ -1214,7 +1251,10 @@ Swapchain::Status Swapchain::Present() {
+ 		// texture copies: the present never waits for them, nor for a signal not yet submitted.
+ 		Common::LockGuard lock(m_window.graphic_ctx.queue_mutex);
+ 		m_window.graphic_ctx.submission_queue.DrainReadyForPresentLocked();
+-		result = m_window.graphic_ctx.queue.presentKHR(&present);
++		result = m_fsr_fg ? static_cast<vk::Result>(FsrFrameGen::QueuePresent(
++		                       static_cast<VkQueue>(m_window.graphic_ctx.queue),
++		                       reinterpret_cast<const VkPresentInfoKHR*>(&present)))
++		                 : m_window.graphic_ctx.queue.presentKHR(&present);
+ 	}
+ 	LowLatency::EndPresent(static_cast<VkSwapchainKHR>(m_handle), latency_id);
+ 	switch (result) {
+diff --git a/src/graphics/presentation/window/vulkanWindow.cpp b/src/graphics/presentation/window/vulkanWindow.cpp
+index 6aae51f3..2a637167 100644
+--- a/src/graphics/presentation/window/vulkanWindow.cpp
++++ b/src/graphics/presentation/window/vulkanWindow.cpp
+@@ -10,6 +10,7 @@
+ #include "common/textureSparseResidency.h"
+ #include "common/threads.h"
+ #include "common/timer.h"
++#include "graphics/host_gpu/renderer/fsrFrameGen.h"
+ #include "graphics/host_gpu/aftermath.h"
+ #include "graphics/host_gpu/gpuBreadcrumbs.h"
+ #include "graphics/host_gpu/graphicContext.h"
+@@ -694,11 +695,17 @@ static vk::Device VulkanCreateDevice(GraphicContext& graphics,
+ 	       graphics.side_queue_index != 0 ? "queue 1" : "shared with queue 0", queue_family,
+ 	       family_queue_count);
+ 
+-	const std::array<float, 2> queue_priorities {1.0f, 1.0f};
++	// AkiBot AKIBOT_FSRFG: two more queues of the family for AMD's swapchain.
++	const uint32_t base_queues = graphics.side_queue_index != 0 ? 2u : 1u;
++	graphics.fsr_queue_index   = 0;
++	if (FsrFrameGen::ExtraQueues() != 0 && family_queue_count >= base_queues + FsrFrameGen::ExtraQueues()) {
++		graphics.fsr_queue_index = base_queues;
++	}
++	const std::array<float, 5> queue_priorities {1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
+ 	std::array<vk::DeviceQueueCreateInfo, 2> queue_create_infos {};
+ 	auto&                      queue_create_info = queue_create_infos[0];
+ 	queue_create_info.queueFamilyIndex = queue_family;
+-	queue_create_info.queueCount       = graphics.side_queue_index != 0 ? 2u : 1u;
++	queue_create_info.queueCount       = base_queues + (graphics.fsr_queue_index != 0 ? FsrFrameGen::ExtraQueues() : 0u);
+ 	queue_create_info.pQueuePriorities = queue_priorities.data();
+ 	// KYTY_UPLOAD_DMA: one queue of a transfer-only family (the copy engines), for UploadDma.
+ 	// Not under RenderDoc, whose captures of the extra queue are not needed for analysis.
+@@ -2254,6 +2261,14 @@ void WindowContext::CreateVulkan() {
+ 		                            &graphic_ctx.side_queue);
+ 		EXIT_IF(graphic_ctx.side_queue == nullptr);
+ 	}
++	if (graphic_ctx.fsr_queue_index != 0) {
++		graphic_ctx.device.getQueue(graphic_ctx.queue_family, graphic_ctx.fsr_queue_index,
++		                            &graphic_ctx.fsr_present_queue);
++		graphic_ctx.device.getQueue(graphic_ctx.queue_family, graphic_ctx.fsr_queue_index + 1,
++		                            &graphic_ctx.fsr_acquire_queue);
++		graphic_ctx.device.getQueue(graphic_ctx.queue_family, graphic_ctx.fsr_queue_index + 2,
++		                            &graphic_ctx.fsr_compute_queue);
++	}
+ 	if (graphic_ctx.transfer_queue_family != static_cast<uint32_t>(-1)) {
+ 		graphic_ctx.device.getQueue(graphic_ctx.transfer_queue_family, 0,
+ 		                            &graphic_ctx.transfer_queue);
+-- 
+2.56.0.windows.4
+

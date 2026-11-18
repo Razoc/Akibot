@@ -1,9 +1,9 @@
-# Draws AstroHybrid's own icon (a white star on a blue rounded square, the app's sidebar logo) so the public
-# app and launcher carry no game artwork. Writes AstroHybrid.App\Resources\astrohybrid.ico and astrohybrid.png.
+# Draws AkiBot's own icon (a white star on a blue rounded square, the app's sidebar logo) so the public
+# app and launcher carry no game artwork. Writes AkiBot.App\Resources\akibot.ico and akibot.png.
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 $root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
-$out = Join-Path $root 'AstroHybrid.App\Resources'
+$out = Join-Path $root 'AkiBot.App\Resources'
 
 function Draw([int]$n) {
     $bmp = New-Object Drawing.Bitmap $n, $n
@@ -37,7 +37,7 @@ function Png($bmp) {
 }
 
 $big = Draw 192
-$big.Save((Join-Path $out 'astrohybrid.png'), [Drawing.Imaging.ImageFormat]::Png)
+$big.Save((Join-Path $out 'akibot.png'), [Drawing.Imaging.ImageFormat]::Png)
 $sizes = @(256, 64, 48, 32, 16)
 $pngs = @($sizes | ForEach-Object { ,(Png (Draw $_)) })
 $ico = New-Object IO.MemoryStream
@@ -52,5 +52,5 @@ for ($i = 0; $i -lt $sizes.Count; $i++) {
 }
 foreach ($p in $pngs) { $w.Write($p) }
 $w.Flush()
-[IO.File]::WriteAllBytes((Join-Path $out 'astrohybrid.ico'), $ico.ToArray())
-"wrote astrohybrid.ico and astrohybrid.png"
+[IO.File]::WriteAllBytes((Join-Path $out 'akibot.ico'), $ico.ToArray())
+"wrote akibot.ico and akibot.png"

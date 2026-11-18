@@ -1,7 +1,7 @@
-From 43f12167652e3ead126f212f030b78005fe286c7 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Thu, 29 Oct 2026 11:14:20 +0000
-Subject: [PATCH 03/26] perf(agc): resident staging switch, program-filtered
+Subject: [PATCH 03/27] perf(agc): resident staging switch, program-filtered
  dispatch trace, block-collect switch
 
 - APS5_RESIDENT_STAGING=1 (off by default): skip copy-in of device-local regions whose host
@@ -315,5 +315,5 @@ index 4ecd22d7d4..f862041333 100644
  | `APS5_TRACE_RESOURCE_KEY_MISSES` | presence | `core/libs/prx/libSceAgcDriver/Graphics/src/ShaderResources.cpp` |  | reports shader-resource cache key misses |
  | `APS5_TRACE_SECONDS` | string | `core/libs/prx/libSceAgcDriver/Execution/include/PerformanceTrace.hpp` |  | records from the first present `<start>` seconds after the first present for `<length>` seconds (whole numbers, `start:length`) |
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

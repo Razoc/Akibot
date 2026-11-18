@@ -1,10 +1,10 @@
-From 961640002268f3b39022bcbe47a9dfece0762918 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Thu, 12 Nov 2026 19:26:21 +0000
-Subject: [PATCH 24/35] feat(hybrid): opt-in generation fast path for writable
+Subject: [PATCH 24/42] feat(hybrid): opt-in generation fast path for writable
  buffer bindings
 
-ASTROHYBRID_COMMIT_EPOCH_FASTPATH=1|verify|exit (default 0). A writable
+AKIBOT_COMMIT_EPOCH_FASTPATH=1|verify|exit (default 0). A writable
 binding seen before is accepted from the range's tracker signature, the
 buffer structure epoch and a new GPU-modified range removal counter
 instead of re-running its synchronizations; anything else takes the
@@ -17,16 +17,16 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
  2 files changed, 295 insertions(+)
 
 diff --git a/src/graphics/host_gpu/renderer/cache/bufferCache.cpp b/src/graphics/host_gpu/renderer/cache/bufferCache.cpp
-index 07cee45e..ccec8ed9 100644
+index 07cee45e..488cc89e 100644
 --- a/src/graphics/host_gpu/renderer/cache/bufferCache.cpp
 +++ b/src/graphics/host_gpu/renderer/cache/bufferCache.cpp
 @@ -726,6 +726,18 @@ bool BindingMemoCrossEpochEnabled() {
  	return ParseEnvU64("KYTY_BINDING_MEMO_CROSS_EPOCH", 1) != 0;
  }
  
-+// ASTROHYBRID_COMMIT_EPOCH_FASTPATH (bufferCache.h): 0 off (default), 1 on, 2 verify, 3 exit.
++// AKIBOT_COMMIT_EPOCH_FASTPATH (bufferCache.h): 0 off (default), 1 on, 2 verify, 3 exit.
 +int CommitEpochFastPathMode() {
-+	const char* value = std::getenv("ASTROHYBRID_COMMIT_EPOCH_FASTPATH");
++	const char* value = std::getenv("AKIBOT_COMMIT_EPOCH_FASTPATH");
 +	if (value == nullptr || value[0] == '\0' || std::strcmp(value, "0") == 0) {
 +		return 0;
 +	}
@@ -313,14 +313,14 @@ index 07cee45e..ccec8ed9 100644
  	TouchBuffer(buffer);
  	// Bytes the shader cannot write only need the upload a read binding gets. Each written range
 diff --git a/src/graphics/host_gpu/renderer/cache/bufferCache.h b/src/graphics/host_gpu/renderer/cache/bufferCache.h
-index 82d0fb2e..1ce38202 100644
+index 82d0fb2e..576b8ad4 100644
 --- a/src/graphics/host_gpu/renderer/cache/bufferCache.h
 +++ b/src/graphics/host_gpu/renderer/cache/bufferCache.h
 @@ -822,6 +822,64 @@ private:
  		uint64_t verify_mismatches = 0;
  	};
  	WrittenSyncTotals m_written_sync_totals;
-+	// ASTROHYBRID_COMMIT_EPOCH_FASTPATH (default 0; 1 on, verify, exit; GPU thread): a writable
++	// AKIBOT_COMMIT_EPOCH_FASTPATH (default 0; 1 on, verify, exit; GPU thread): a writable
 +	// binding (ObtainBuffer written, not texel; ObtainWrittenBuffer) of a key seen before
 +	// (range, written ranges, caller's buffer id) is accepted from generations instead of running
 +	// its synchronization again, while
@@ -382,5 +382,5 @@ index 82d0fb2e..1ce38202 100644
  	// publication has not been seen landed yet (GPU thread), and the outcomes (tests read them;
  	// the verify counts are updated by the publications).
 -- 
-2.55.0.windows.5
+2.56.0.windows.4
 

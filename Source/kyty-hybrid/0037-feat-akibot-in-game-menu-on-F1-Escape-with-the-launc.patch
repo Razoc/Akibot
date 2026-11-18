@@ -1,0 +1,968 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Razoc <razoc@users.noreply.github.com>
+Date: Tue, 17 Nov 2026 21:13:31 +0100
+Subject: [PATCH 37/42] feat(akibot): in-game menu on F1 / Escape with the
+ launcher's options
+
+New AkiBotMenu (src/graphics/presentation/akibotMenu.*), shown through the
+system overlay as a new OverlayKind::Menu: it captures the controller,
+keyboard and mouse while open, so the game gets no input.
+
+- Every option of the AkiBot launcher, read from and saved to the file
+  named by AKIBOT_SETTINGS_FILE (same JSON keys and values), texts in
+  French or English (AKIBOT_LANG).
+- Applied at once: frame-rate limit (VideoOut::SetFrameLimit), FPS
+  counter (SetPerformanceOverlayMode), fullscreen, game speed
+  (VideoOut::SetGameSpeedPercent). The others are marked "*" and apply
+  on the next start.
+- Keyboard: arrows, Enter/Space, Page Up/Down or Q/E/Tab for tabs,
+  Escape or F1 to close. Controller: D-pad, A, B, LB/RB, Start.
+- F1 no longer triggers a RenderDoc capture (now Ctrl+F1). Escape stays
+  with a system dialog or the on-screen keyboard when one is shown.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/graphics/presentation/akibotMenu.cpp      | 613 ++++++++++++++++++
+ src/graphics/presentation/akibotMenu.h        |  27 +
+ .../presentation/performanceOverlay.cpp       |   8 +
+ .../presentation/performanceOverlay.h         |   2 +
+ src/graphics/presentation/systemOverlay.cpp   |  57 +-
+ src/graphics/presentation/systemOverlay.h     |   4 +
+ src/graphics/presentation/videoOut.cpp        |  23 +
+ src/graphics/presentation/videoOut.h          |   3 +
+ src/graphics/presentation/window/window.cpp   |  16 +-
+ 9 files changed, 749 insertions(+), 4 deletions(-)
+ create mode 100644 src/graphics/presentation/akibotMenu.cpp
+ create mode 100644 src/graphics/presentation/akibotMenu.h
+
+diff --git a/src/graphics/presentation/akibotMenu.cpp b/src/graphics/presentation/akibotMenu.cpp
+new file mode 100644
+index 00000000..0ac7bfbe
+--- /dev/null
++++ b/src/graphics/presentation/akibotMenu.cpp
+@@ -0,0 +1,613 @@
++#include "graphics/presentation/akibotMenu.h"
++
++#include "graphics/presentation/performanceOverlay.h"
++#include "graphics/presentation/systemOverlay.h"
++#include "graphics/presentation/videoOut.h"
++#include "imgui.h"
++
++#include <SDL3/SDL.h>
++#include <algorithm>
++#include <array>
++#include <atomic>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
++#include <filesystem>
++#include <fstream>
++#include <mutex>
++#include <nlohmann/json.hpp>
++#include <string>
++#include <vector>
++
++namespace Libs::Graphics::AkiBotMenu {
++
++namespace {
++
++using Json = nlohmann::json;
++
++// ----------------------------------------------------------------------------------------------
++// Options: the launcher's settings (AkiBot.App/Models/AppSettings.cs), same JSON keys and values.
++
++enum class Kind : uint8_t { Choice, Toggle };
++enum class Tab : uint8_t { Graphics, Controller, Advanced };
++enum class Live : uint8_t { No, FrameLimit, Overlay, Fullscreen, Speed };
++
++struct Text {
++	const char* fr;
++	const char* en;
++};
++
++struct Option {
++	Tab               tab;
++	const char*       key;
++	Kind              kind;
++	Text              label;
++	std::vector<Text> choices; // Choice: one label per index (index = JSON value unless mapped)
++	Live              live;
++	bool              defaults_on; // Toggle default
++	int               default_index;
++};
++
++bool g_french = false;
++
++const char* T(const Text& text) {
++	return g_french ? text.fr : text.en;
++}
++
++const std::vector<Option>& Options() {
++	static const std::vector<Option> options {
++	    // Graphics
++	    {Tab::Graphics, "size", Kind::Choice, {"Résolution", "Resolution"},
++	     {{"1280 x 720", "1280 x 720"}, {"1600 x 900", "1600 x 900"}, {"1920 x 1080", "1920 x 1080"},
++	      {"2560 x 1440", "2560 x 1440"}, {"2560 x 1080 (21:9)", "2560 x 1080 (21:9)"},
++	      {"3440 x 1440 (21:9)", "3440 x 1440 (21:9)"}},
++	     Live::No, false, 2},
++	    {Tab::Graphics, "fullscreen", Kind::Toggle, {"Plein écran", "Fullscreen"}, {}, Live::Fullscreen, true, 0},
++	    {Tab::Graphics, "ultrawide", Kind::Toggle, {"Ultra-large 21:9", "Ultrawide 21:9"}, {}, Live::No, false, 0},
++	    {Tab::Graphics, "vsync", Kind::Toggle, {"VSync", "VSync"}, {}, Live::No, false, 0},
++	    {Tab::Graphics, "fps", Kind::Choice, {"Limite d'images/s", "Frame rate limit"},
++	     {{"30 FPS (conseillé)", "30 FPS (recommended)"}, {"35 FPS", "35 FPS"}, {"45 FPS", "45 FPS"},
++	      {"50 FPS", "50 FPS"}, {"55 FPS", "55 FPS"}, {"60 FPS", "60 FPS"}, {"Sans limite", "No limit"}},
++	     Live::FrameLimit, false, 0},
++	    {Tab::Graphics, "overlay", Kind::Choice, {"Compteur de FPS", "FPS counter"},
++	     {{"Désactivé", "Off"}, {"FPS seulement", "FPS only"}, {"FPS + processeur, carte graphique", "FPS + CPU, GPU"},
++	      {"Toutes les statistiques", "All stats"}},
++	     Live::Overlay, false, 0},
++	    {Tab::Graphics, "lighting", Kind::Choice, {"Ray tracing", "Ray tracing"},
++	     {{"OFF - éclairage rapide", "OFF - faster lighting"}, {"ON - ray tracing", "ON - ray tracing"}},
++	     Live::No, false, 0},
++	    {Tab::Graphics, "upscale", Kind::Choice, {"DLSS", "DLSS"},
++	     {{"Celui du jeu", "Game's own"}, {"NVIDIA DLSS", "NVIDIA DLSS"}}, Live::No, false, 0},
++	    {Tab::Graphics, "fgmode", Kind::Choice, {"Frame Generation", "Frame Generation"},
++	     {{"Désactivée", "Off"}, {"Auto (conseillé)", "Auto (recommended)"}, {"x2", "2x"}, {"x3", "3x"}, {"x4", "4x"}},
++	     Live::No, false, 0},
++	    {Tab::Graphics, "fgtarget", Kind::Choice, {"Objectif à l'écran", "On-screen target"},
++	     {{"Sans limite", "No lock"}, {"50 FPS", "50 FPS"}, {"60 FPS", "60 FPS"}, {"90 FPS", "90 FPS"},
++	      {"120 FPS", "120 FPS"}, {"144 FPS", "144 FPS"}, {"165 FPS", "165 FPS"}},
++	     Live::No, false, 2},
++	    {Tab::Graphics, "lowlatency", Kind::Toggle, {"NVIDIA Reflex", "NVIDIA Reflex"}, {}, Live::No, false, 0},
++	    // Controller
++	    {Tab::Controller, "pad", Kind::Choice, {"Manette utilisée", "Controller"},
++	     {{"Auto (celle que tu utilises)", "Auto (the one you press)"}, {"PlayStation", "PlayStation"},
++	      {"Xbox", "Xbox"}, {"Switch Pro", "Switch Pro"}, {"Autre", "Other"}},
++	     Live::No, false, 0},
++	    {Tab::Controller, "rumblepct", Kind::Choice, {"Vibration", "Vibration"},
++	     {{"Coupée", "Off"}, {"5 %", "5%"}, {"10 %", "10%"}, {"20 %", "20%"}, {"40 %", "40%"},
++	      {"70 % (conseillé)", "70% (recommended)"}, {"100 %", "100%"}, {"150 %", "150%"}},
++	     Live::No, false, 5},
++	    {Tab::Controller, "switchboost", Kind::Toggle, {"Vibration renforcée (type Switch)", "Stronger vibration (Switch-style)"},
++	     {}, Live::No, true, 0},
++	    {Tab::Controller, "padMotion", Kind::Toggle, {"Détecteurs de mouvement", "Motion sensors"}, {}, Live::No, true, 0},
++	    {Tab::Controller, "triggerState", Kind::Toggle, {"Gâchettes adaptatives", "Adaptive triggers"}, {}, Live::No, true, 0},
++	    {Tab::Controller, "dsWirelessSpeaker", Kind::Toggle, {"DualSense : haut-parleur Bluetooth", "DualSense: Bluetooth speaker"},
++	     {}, Live::No, true, 0},
++	    {Tab::Controller, "dsWirelessHaptics", Kind::Toggle, {"DualSense : vibrations HD Bluetooth", "DualSense: Bluetooth HD haptics"},
++	     {}, Live::No, true, 0},
++	    // Advanced
++	    {Tab::Advanced, "speed", Kind::Choice, {"Vitesse du jeu", "Game speed"},
++	     {{"100 % (temps réel)", "100% (real time)"}, {"95 %", "95%"}, {"90 %", "90%"}, {"85 %", "85%"},
++	      {"80 %", "80%"}, {"75 %", "75%"}},
++	     Live::Speed, false, 0},
++	    {Tab::Advanced, "language", Kind::Choice, {"Langue du jeu", "Game language"},
++	     {{"Auto (Windows)", "Auto (Windows)"}, {"Japonais", "Japanese"}, {"Anglais (US)", "English (US)"},
++	      {"Français", "French"}, {"Espagnol", "Spanish"}, {"Allemand", "German"}, {"Italien", "Italian"},
++	      {"Néerlandais", "Dutch"}, {"Portugais (Portugal)", "Portuguese (Portugal)"}, {"Russe", "Russian"},
++	      {"Coréen", "Korean"}, {"Chinois (traditionnel)", "Chinese (Traditional)"},
++	      {"Chinois (simplifié)", "Chinese (Simplified)"}, {"Finnois", "Finnish"}, {"Suédois", "Swedish"},
++	      {"Danois", "Danish"}, {"Norvégien", "Norwegian"}, {"Polonais", "Polish"},
++	      {"Portugais (Brésil)", "Portuguese (Brazil)"}, {"Anglais (UK)", "English (UK)"}, {"Turc", "Turkish"},
++	      {"Espagnol (Amérique latine)", "Spanish (Latin America)"}, {"Arabe", "Arabic"},
++	      {"Français (Canada)", "French (Canada)"}, {"Tchèque", "Czech"}, {"Hongrois", "Hungarian"},
++	      {"Grec", "Greek"}, {"Roumain", "Romanian"}, {"Thaï", "Thai"}, {"Vietnamien", "Vietnamese"},
++	      {"Indonésien", "Indonesian"}, {"Ukrainien", "Ukrainian"}},
++	     Live::No, false, 0},
++	    {Tab::Advanced, "skipIntro", Kind::Toggle, {"Passer les vidéos d'intro", "Skip intro videos"}, {}, Live::No, false, 0},
++	    {Tab::Advanced, "priority", Kind::Choice, {"Priorité du jeu", "Game priority"},
++	     {{"normal", "normal"}, {"abovenormal", "abovenormal"}, {"high", "high"}}, Live::No, false, 1},
++	    {Tab::Advanced, "cpPriority", Kind::Choice, {"Priorité du rendu", "Renderer priority"},
++	     {{"1", "1"}, {"2", "2"}}, Live::No, false, 1},
++	    {Tab::Advanced, "shaderCache", Kind::Toggle, {"Cache de shaders", "Shader cache"}, {}, Live::No, true, 0},
++	    {Tab::Advanced, "drawPrepTuning", Kind::Toggle, {"Préparation du rendu prioritaire", "Prioritised draw preparation"},
++	     {}, Live::No, true, 0},
++	    {Tab::Advanced, "hangWatchdog", Kind::Toggle, {"Diagnostic des blocages", "Freeze diagnostics"}, {}, Live::No, false, 0},
++	};
++	return options;
++}
++
++constexpr std::array<int, 7>         FPS_VALUES {30, 35, 45, 50, 55, 60, 0};
++constexpr std::array<int, 6>         SPEED_PERCENT {100, 95, 90, 85, 80, 75};
++constexpr std::array<int, 8>         RUMBLE_PERCENT {0, 5, 10, 20, 40, 70, 100, 150};
++constexpr std::array<const char*, 3> PRIORITIES {"normal", "abovenormal", "high"};
++
++// ----------------------------------------------------------------------------------------------
++// State
++
++std::atomic<bool>     g_open {false};
++std::atomic<uint64_t> g_generation {0};
++std::atomic<int>      g_fullscreen_request {-1}; // -1 none, 0 windowed, 1 fullscreen
++std::atomic<Uint32>   g_wakeup_event {0};
++
++std::mutex            g_mutex; // the fields below
++Json                  g_settings;
++std::vector<int>      g_values; // per option: Choice index, or Toggle 0/1
++std::vector<int>      g_initial;
++Tab                   g_tab        = Tab::Graphics;
++bool                  g_focus_top  = false;
++std::string           g_save_error;
++
++const char* SettingsPath() {
++	static const char* path = std::getenv("AKIBOT_SETTINGS_FILE");
++	return path != nullptr && path[0] != '\0' ? path : nullptr;
++}
++
++int ReadIndex(const Option& option, const Json& json) {
++	const auto it = json.find(option.key);
++	if (option.kind == Kind::Toggle) {
++		return it != json.end() && it->is_boolean() ? (it->get<bool>() ? 1 : 0) : (option.defaults_on ? 1 : 0);
++	}
++	if (it == json.end()) {
++		return option.default_index;
++	}
++	const int count = static_cast<int>(option.choices.size());
++	if (std::strcmp(option.key, "priority") == 0 && it->is_string()) {
++		const auto value = it->get<std::string>();
++		for (int i = 0; i < 3; ++i) {
++			if (value == PRIORITIES[i]) {
++				return i;
++			}
++		}
++		return option.default_index;
++	}
++	if (!it->is_number_integer()) {
++		return option.default_index;
++	}
++	int value = it->get<int>();
++	if (std::strcmp(option.key, "language") == 0) {
++		value = value < 0 || value > 30 ? 0 : value + 1;
++	} else if (std::strcmp(option.key, "cpPriority") == 0) {
++		value = value <= 1 ? 0 : 1;
++	} else if (std::strcmp(option.key, "rumblepct") == 0) {
++		if (value < 0) {
++			return option.default_index;
++		}
++		int best = 0;
++		for (int i = 0; i < static_cast<int>(RUMBLE_PERCENT.size()); ++i) {
++			if (std::abs(RUMBLE_PERCENT[i] - value) < std::abs(RUMBLE_PERCENT[best] - value)) {
++				best = i;
++			}
++		}
++		return best;
++	}
++	return std::clamp(value, 0, count - 1);
++}
++
++void WriteIndex(const Option& option, int index, Json& json) {
++	if (option.kind == Kind::Toggle) {
++		json[option.key] = index != 0;
++	} else if (std::strcmp(option.key, "priority") == 0) {
++		json[option.key] = PRIORITIES[index];
++	} else if (std::strcmp(option.key, "language") == 0) {
++		json[option.key] = index == 0 ? -1 : index - 1;
++	} else if (std::strcmp(option.key, "cpPriority") == 0) {
++		json[option.key] = index + 1;
++	} else if (std::strcmp(option.key, "rumblepct") == 0) {
++		json[option.key] = RUMBLE_PERCENT[index];
++	} else {
++		json[option.key] = index;
++	}
++}
++
++void Load() {
++	g_settings = Json::object();
++	if (const char* path = SettingsPath(); path != nullptr) {
++		std::ifstream file(std::filesystem::u8path(path));
++		if (file) {
++			g_settings = Json::parse(file, nullptr, false);
++			if (g_settings.is_discarded() || !g_settings.is_object()) {
++				g_settings = Json::object();
++			}
++		}
++	}
++	const auto& options = Options();
++	g_values.resize(options.size());
++	for (size_t i = 0; i < options.size(); ++i) {
++		g_values[i] = ReadIndex(options[i], g_settings);
++	}
++	if (g_initial.empty()) {
++		g_initial = g_values; // what the game was started with
++	}
++}
++
++void Save() {
++	const char* path = SettingsPath();
++	if (path == nullptr) {
++		return;
++	}
++	const auto& options = Options();
++	for (size_t i = 0; i < options.size(); ++i) {
++		WriteIndex(options[i], g_values[i], g_settings);
++	}
++	const auto target = std::filesystem::u8path(path);
++	auto       temp   = target;
++	temp += ".tmp";
++	{
++		std::ofstream file(temp, std::ios::binary | std::ios::trunc);
++		if (!file) {
++			g_save_error = "write";
++			return;
++		}
++		file << g_settings.dump(2);
++	}
++	std::error_code error;
++	std::filesystem::rename(temp, target, error);
++	g_save_error = error ? "rename" : "";
++}
++
++int ValueOf(const char* key) {
++	const auto& options = Options();
++	for (size_t i = 0; i < options.size(); ++i) {
++		if (std::strcmp(options[i].key, key) == 0) {
++			return g_values[i];
++		}
++	}
++	return 0;
++}
++
++bool FrameGenOn() {
++	return ValueOf("fgmode") != 0;
++}
++
++void ApplyLive(const Option& option, int index) {
++	switch (option.live) {
++		case Live::FrameLimit:
++			if (!FrameGenOn()) {
++				VideoOut::SetFrameLimit(static_cast<uint32_t>(FPS_VALUES[index]));
++			}
++			break;
++		case Live::Overlay: SetPerformanceOverlayMode(index); break;
++		case Live::Speed: VideoOut::SetGameSpeedPercent(SPEED_PERCENT[index]); break;
++		case Live::Fullscreen: {
++			g_fullscreen_request.store(index, std::memory_order_release);
++			SDL_Event event {};
++			event.type = g_wakeup_event.load(std::memory_order_acquire);
++			if (event.type != 0) {
++				(void)SDL_PushEvent(&event);
++			}
++			break;
++		}
++		case Live::No: break;
++	}
++}
++
++bool OptionEnabled(const Option& option) {
++	if (std::strcmp(option.key, "fps") == 0) {
++		return !FrameGenOn();
++	}
++	if (std::strcmp(option.key, "fgtarget") == 0) {
++		return FrameGenOn();
++	}
++	return true;
++}
++
++// ----------------------------------------------------------------------------------------------
++// Drawing
++
++ImVec4 Rgb(int r, int g, int b, float a = 1.0f) {
++	return {static_cast<float>(r) / 255.0f, static_cast<float>(g) / 255.0f, static_cast<float>(b) / 255.0f, a};
++}
++
++const ImU32 COLOR_TEXT    = IM_COL32(244, 242, 255, 255);
++const ImU32 COLOR_MUTED   = IM_COL32(125, 116, 163, 255);
++const ImU32 COLOR_VALUE   = IM_COL32(182, 174, 214, 255);
++const ImU32 COLOR_ACCENT  = IM_COL32(124, 92, 255, 255);
++const ImU32 COLOR_ORANGE  = IM_COL32(255, 159, 67, 255);
++const ImU32 COLOR_ROW     = IM_COL32(23, 19, 42, 255);
++const ImU32 COLOR_ROW_HOT = IM_COL32(38, 30, 72, 255);
++
++// One option row: label on the left, value on the right. Returns -1/+1 to step a choice (Left/Right,
++// clicks on the arrows, A/Enter or a click on the row = +1).
++int Row(const Option& option, int value, bool enabled, float width, float height, float scale) {
++	ImGui::PushID(option.key);
++	ImGui::BeginDisabled(!enabled);
++	const ImVec2 start = ImGui::GetCursorScreenPos();
++	const bool   clicked = ImGui::InvisibleButton("##row", {width, height}, ImGuiButtonFlags_EnableNav);
++	const bool   focused = ImGui::IsItemFocused();
++	const bool   hovered = ImGui::IsItemHovered();
++	ImGui::EndDisabled();
++
++	auto* draw = ImGui::GetWindowDrawList();
++	const ImVec2 end {start.x + width, start.y + height};
++	draw->AddRectFilled(start, end, focused || hovered ? COLOR_ROW_HOT : COLOR_ROW, 10.0f * scale);
++	if (focused) {
++		draw->AddRect(start, end, COLOR_ACCENT, 10.0f * scale, 0, 2.0f * scale);
++	}
++	const float alpha = enabled ? 1.0f : 0.4f;
++	const auto  fade  = [alpha](ImU32 color) {
++        return (color & 0x00FFFFFFu) | (static_cast<ImU32>(((color >> 24) & 0xFF) * alpha) << 24);
++	};
++	const float text_y = start.y + (height - ImGui::GetFontSize()) * 0.5f;
++	draw->AddText({start.x + 18.0f * scale, text_y}, fade(COLOR_TEXT), T(option.label));
++	if (option.live == Live::No) {
++		const float label_w = ImGui::CalcTextSize(T(option.label)).x;
++		draw->AddText({start.x + 18.0f * scale + label_w + 6.0f * scale, text_y}, fade(COLOR_ORANGE), "*");
++	}
++
++	int step = 0;
++	if (option.kind == Kind::Toggle) {
++		const float tw = 44.0f * scale;
++		const float th = 24.0f * scale;
++		const ImVec2 t0 {end.x - 18.0f * scale - tw, start.y + (height - th) * 0.5f};
++		const ImVec2 t1 {t0.x + tw, t0.y + th};
++		const bool   on = value != 0;
++		draw->AddRectFilled(t0, t1, fade(on ? COLOR_ACCENT : IM_COL32(33, 27, 58, 255)), th * 0.5f);
++		if (!on) {
++			draw->AddRect(t0, t1, fade(COLOR_MUTED), th * 0.5f, 0, 1.0f * scale);
++		}
++		const float r = (on ? 8.0f : 7.0f) * scale;
++		const float cx = on ? t1.x - 4.0f * scale - r : t0.x + 5.0f * scale + r;
++		draw->AddCircleFilled({cx, (t0.y + t1.y) * 0.5f}, r, fade(on ? IM_COL32_WHITE : COLOR_VALUE));
++		if (enabled && (clicked || (focused && (ImGui::IsKeyPressed(ImGuiKey_GamepadDpadLeft) ||
++		                                        ImGui::IsKeyPressed(ImGuiKey_GamepadDpadRight))))) {
++			step = 1;
++		}
++	} else {
++		const char* text  = T(option.choices[static_cast<size_t>(value)]);
++		const float tw    = ImGui::CalcTextSize(text).x;
++		const float arrow = 22.0f * scale;
++		const float right = end.x - 18.0f * scale;
++		const float left  = right - arrow * 2.0f - std::max(tw, 120.0f * scale) - 12.0f * scale;
++		draw->AddText({left, text_y}, fade(focused ? COLOR_ACCENT : COLOR_MUTED), "<");
++		draw->AddText({right - ImGui::CalcTextSize(">").x, text_y}, fade(focused ? COLOR_ACCENT : COLOR_MUTED), ">");
++		const float mid = (left + arrow + right - arrow) * 0.5f;
++		draw->AddText({mid - tw * 0.5f, text_y}, fade(COLOR_VALUE), text);
++		if (enabled) {
++			if (focused && ImGui::IsKeyPressed(ImGuiKey_GamepadDpadLeft)) {
++				step = -1;
++			} else if (focused && ImGui::IsKeyPressed(ImGuiKey_GamepadDpadRight)) {
++				step = 1;
++			} else if (clicked) {
++				step = ImGui::GetIO().MousePos.x < left + arrow * 1.5f ? -1 : 1;
++			}
++		}
++	}
++	ImGui::PopID();
++	return step;
++}
++
++bool Button(const char* label, float width, float height, bool primary) {
++	ImGui::PushStyleColor(ImGuiCol_Button, primary ? Rgb(124, 92, 255) : Rgb(33, 27, 58));
++	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, primary ? Rgb(148, 121, 255) : Rgb(44, 37, 72));
++	ImGui::PushStyleColor(ImGuiCol_ButtonActive, primary ? Rgb(100, 70, 230) : Rgb(44, 37, 72));
++	const bool pressed = ImGui::Button(label, {width, height});
++	ImGui::PopStyleColor(3);
++	return pressed;
++}
++
++} // namespace
++
++bool Available() noexcept {
++	return SettingsPath() != nullptr;
++}
++
++bool IsOpen() noexcept {
++	return g_open.load(std::memory_order_acquire);
++}
++
++uint64_t Generation() noexcept {
++	return g_generation.load(std::memory_order_acquire);
++}
++
++void Toggle() {
++	if (IsOpen()) {
++		Close();
++		return;
++	}
++	{
++		std::scoped_lock lock(g_mutex);
++		if (const char* lang = std::getenv("AKIBOT_LANG"); lang != nullptr) {
++			g_french = std::strcmp(lang, "fr") == 0;
++		}
++		if (g_wakeup_event.load(std::memory_order_acquire) == 0) {
++			const Uint32 type = SDL_RegisterEvents(1);
++			g_wakeup_event.store(type == static_cast<Uint32>(-1) ? 0 : type, std::memory_order_release);
++		}
++		Load();
++		g_focus_top = true;
++	}
++	g_generation.fetch_add(1, std::memory_order_acq_rel);
++	g_open.store(true, std::memory_order_release);
++	RefreshSystemOverlayVisibility();
++}
++
++void Close() {
++	if (!g_open.exchange(false, std::memory_order_acq_rel)) {
++		return;
++	}
++	RefreshSystemOverlayVisibility();
++}
++
++bool ProcessWindowRequests(uint32_t event_type) {
++	const int want = g_fullscreen_request.exchange(-1, std::memory_order_acq_rel);
++	if (want >= 0) {
++		if (SDL_Window* window = SDL_GetKeyboardFocus(); window != nullptr) {
++			const bool fullscreen = (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0u;
++			if (fullscreen != (want != 0)) {
++				(void)SDL_SetWindowFullscreen(window, want != 0);
++			}
++		}
++	}
++	const Uint32 wakeup = g_wakeup_event.load(std::memory_order_acquire);
++	return wakeup != 0 && event_type == wakeup;
++}
++
++void Draw(float width, float height) {
++	if (!IsOpen()) {
++		return;
++	}
++	std::scoped_lock lock(g_mutex);
++	const auto& options = Options();
++	const float scale   = std::clamp(height / 1080.0f, 0.75f, 2.0f);
++	const float win_w   = std::min(900.0f * scale, width - 40.0f);
++	const float win_h   = std::min(820.0f * scale, height - 40.0f);
++	const float pad     = 28.0f * scale;
++	const float row_h   = 44.0f * scale;
++	const float gap     = 6.0f * scale;
++
++	// Dim the game behind the menu.
++	ImGui::GetBackgroundDrawList()->AddRectFilled({0, 0}, {width, height}, IM_COL32(8, 6, 16, 150));
++
++	if (g_focus_top) {
++		ImGui::SetNextWindowFocus();
++	}
++	ImGui::SetNextWindowPos({(width - win_w) * 0.5f, (height - win_h) * 0.5f});
++	ImGui::SetNextWindowSize({win_w, win_h});
++	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 18.0f * scale);
++	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {pad, pad});
++	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {gap, gap});
++	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 10.0f * scale);
++	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
++	ImGui::PushStyleColor(ImGuiCol_WindowBg, Rgb(14, 11, 26, 0.97f));
++	ImGui::PushStyleColor(ImGuiCol_Border, Rgb(44, 37, 72));
++	ImGui::PushStyleColor(ImGuiCol_Text, Rgb(244, 242, 255));
++	ImGui::PushStyleColor(ImGuiCol_NavHighlight, Rgb(124, 92, 255));
++	ImGui::PushStyleColor(ImGuiCol_ScrollbarBg, Rgb(14, 11, 26, 0.0f));
++	ImGui::PushStyleColor(ImGuiCol_ScrollbarGrab, Rgb(44, 37, 72));
++	ImGui::PushFont(nullptr, 17.0f * scale);
++	ImGui::Begin("##akibot_menu", nullptr,
++	             ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
++	                 ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
++
++	// Header
++	ImGui::PushFont(nullptr, 28.0f * scale);
++	ImGui::TextUnformatted("AkiBot");
++	ImGui::PopFont();
++	ImGui::SameLine();
++	ImGui::SetCursorPosX(win_w - pad - ImGui::CalcTextSize(g_french ? "F1 / Échap pour fermer" : "F1 / Esc to close").x);
++	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 8.0f * scale);
++	ImGui::TextColored(Rgb(125, 116, 163), "%s", g_french ? "F1 / Échap pour fermer" : "F1 / Esc to close");
++	ImGui::Dummy({0, 6.0f * scale});
++
++	// Tabs (LB / RB, PageUp / PageDown, or a click)
++	const std::array<Text, 3> tabs {{{"Graphismes", "Graphics"}, {"Manette", "Controller"}, {"Avancé", "Advanced"}}};
++	if (ImGui::IsKeyPressed(ImGuiKey_F13, false)) {
++		g_tab       = static_cast<Tab>((static_cast<int>(g_tab) + 2) % 3);
++		g_focus_top = true;
++	} else if (ImGui::IsKeyPressed(ImGuiKey_F14, false)) {
++		g_tab       = static_cast<Tab>((static_cast<int>(g_tab) + 1) % 3);
++		g_focus_top = true;
++	}
++	const float tab_w = (win_w - pad * 2.0f - gap * 2.0f) / 3.0f;
++	for (int i = 0; i < 3; ++i) {
++		if (i > 0) {
++			ImGui::SameLine();
++		}
++		const bool current = static_cast<int>(g_tab) == i;
++		ImGui::PushStyleColor(ImGuiCol_Button, current ? Rgb(124, 92, 255, 0.25f) : Rgb(23, 19, 42));
++		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Rgb(124, 92, 255, 0.35f));
++		ImGui::PushStyleColor(ImGuiCol_ButtonActive, Rgb(124, 92, 255, 0.45f));
++		ImGui::PushStyleColor(ImGuiCol_Text, current ? Rgb(244, 242, 255) : Rgb(182, 174, 214));
++		ImGui::PushItemFlag(ImGuiItemFlags_NoNav, true);
++		if (ImGui::Button(T(tabs[static_cast<size_t>(i)]), {tab_w, 40.0f * scale})) {
++			g_tab       = static_cast<Tab>(i);
++			g_focus_top = true;
++		}
++		ImGui::PopItemFlag();
++		ImGui::PopStyleColor(4);
++	}
++	ImGui::Dummy({0, 4.0f * scale});
++
++	// Rows
++	const float footer_h = 46.0f * scale + 34.0f * scale;
++	// Rows straight in the window (no child: keyboard/controller navigation stays row by row).
++	const float rows_bottom = ImGui::GetCursorPosY() + ImGui::GetContentRegionAvail().y - footer_h;
++	const float row_w       = ImGui::GetContentRegionAvail().x;
++	bool        first = true;
++	for (size_t i = 0; i < options.size(); ++i) {
++		const auto& option = options[i];
++		if (option.tab != g_tab) {
++			continue;
++		}
++		const bool enabled = OptionEnabled(option);
++		const int  step    = Row(option, g_values[i], enabled, row_w, row_h, scale);
++		if (first && g_focus_top && enabled) {
++			// Start on the tab's first row (keyboard and controller navigation).
++			ImGui::SetItemDefaultFocus();
++			ImGui::SetKeyboardFocusHere(-1);
++			g_focus_top = false;
++		}
++		first = first && !enabled;
++		if (step != 0) {
++			if (option.kind == Kind::Toggle) {
++				g_values[i] = g_values[i] != 0 ? 0 : 1;
++			} else {
++				const int count = static_cast<int>(option.choices.size());
++				g_values[i]     = (g_values[i] + step + count) % count;
++			}
++			Save();
++			ApplyLive(option, g_values[i]);
++		}
++	}
++	ImGui::SetCursorPosY(std::max(ImGui::GetCursorPosY(), rows_bottom));
++
++	// Footer: note on restart-only options, then Resume / Quit
++	bool pending = false;
++	for (size_t i = 0; i < options.size(); ++i) {
++		pending = pending || (options[i].live == Live::No && g_values[i] != g_initial[i]);
++	}
++	ImGui::TextColored(pending ? Rgb(255, 159, 67) : Rgb(125, 116, 163), "%s",
++	                   pending ? (g_french ? "* Modifié : s'appliquera au prochain lancement du jeu."
++	                                       : "* Changed: applies the next time the game starts.")
++	                           : (g_french ? "* s'applique au prochain lancement du jeu"
++	                                       : "* applies the next time the game starts"));
++	if (!g_save_error.empty()) {
++		ImGui::SameLine();
++		ImGui::TextColored(Rgb(255, 92, 122), "%s", g_french ? "(enregistrement impossible)" : "(could not save)");
++	}
++	const float button_w = 200.0f * scale;
++	ImGui::SetCursorPosX(win_w - pad - button_w * 2.0f - gap);
++	bool close = Button(g_french ? "Quitter le jeu" : "Quit game", button_w, 42.0f * scale, false);
++	if (close) {
++		SDL_Event event {};
++		event.type = SDL_EVENT_QUIT;
++		(void)SDL_PushEvent(&event);
++	}
++	ImGui::SameLine();
++	if (Button(g_french ? "Reprendre" : "Resume", button_w, 42.0f * scale, true)) {
++		close = true;
++	}
++	if (ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight) || ImGui::IsKeyPressed(ImGuiKey_F15, false)) {
++		close = true; // B / Circle, or Start / Options
++	}
++
++	ImGui::End();
++	ImGui::PopFont();
++	ImGui::PopStyleColor(6);
++	ImGui::PopStyleVar(5);
++
++	if (close) {
++		g_open.store(false, std::memory_order_release);
++		RefreshSystemOverlayVisibility();
++	}
++}
++
++} // namespace Libs::Graphics::AkiBotMenu
+diff --git a/src/graphics/presentation/akibotMenu.h b/src/graphics/presentation/akibotMenu.h
+new file mode 100644
+index 00000000..a43aa1d7
+--- /dev/null
++++ b/src/graphics/presentation/akibotMenu.h
+@@ -0,0 +1,27 @@
++#ifndef EMULATOR_SRC_GRAPHICS_PRESENTATION_AKIBOTMENU_H_
++#define EMULATOR_SRC_GRAPHICS_PRESENTATION_AKIBOTMENU_H_
++
++#include <cstdint>
++
++// AkiBot in-game menu (F1 or Escape): every option of the AkiBot launcher. The options the engine can
++// change while the game runs (frame-rate limit, FPS counter, fullscreen, game speed) apply at once; the
++// others are saved to the launcher's settings file (AKIBOT_SETTINGS_FILE, Build\akibot-settings.json)
++// and apply on the next start. While the menu is open the game gets no controller, keyboard or mouse
++// input (the system overlay captures them). Texts: AKIBOT_LANG=fr|en (default en).
++namespace Libs::Graphics::AkiBotMenu {
++
++[[nodiscard]] bool     Available() noexcept; // a settings file was given
++[[nodiscard]] bool     IsOpen() noexcept;
++[[nodiscard]] uint64_t Generation() noexcept; // changes every time the menu opens
++void                   Toggle();
++void                   Close();
++
++// Window thread: applies a pending fullscreen change (returns true when the event was the menu's wakeup).
++bool ProcessWindowRequests(uint32_t event_type);
++
++// Render thread, inside the system overlay's ImGui frame.
++void Draw(float width, float height);
++
++} // namespace Libs::Graphics::AkiBotMenu
++
++#endif // EMULATOR_SRC_GRAPHICS_PRESENTATION_AKIBOTMENU_H_
+diff --git a/src/graphics/presentation/performanceOverlay.cpp b/src/graphics/presentation/performanceOverlay.cpp
+index dfc73ccb..749a55c0 100644
+--- a/src/graphics/presentation/performanceOverlay.cpp
++++ b/src/graphics/presentation/performanceOverlay.cpp
+@@ -647,6 +647,14 @@ void TogglePerformanceOverlay() noexcept {
+ 	g_revision.fetch_add(1, std::memory_order_acq_rel);
+ }
+ 
++void SetPerformanceOverlayMode(int mode) noexcept {
++	(void)PerformanceOverlayEnabled(); // applies AKIBOT_OVERLAY first, once
++	g_fps_only.store(mode == 1, std::memory_order_release);
++	g_details.store(mode == 3, std::memory_order_release);
++	SetOverlayEnabled(mode != 0);
++	g_revision.fetch_add(1, std::memory_order_acq_rel);
++}
++
+ void TogglePerformanceOverlayDetails() noexcept {
+ 	if (g_fps_only.exchange(false, std::memory_order_acq_rel) && Common::DebugCounters::Enabled()) {
+ 		g_details.store(false, std::memory_order_release);
+diff --git a/src/graphics/presentation/performanceOverlay.h b/src/graphics/presentation/performanceOverlay.h
+index 8b7b318e..4daddd0d 100644
+--- a/src/graphics/presentation/performanceOverlay.h
++++ b/src/graphics/presentation/performanceOverlay.h
+@@ -16,6 +16,8 @@ void PerformanceOverlayRecordFlip(uint32_t guest_width, uint32_t guest_height) n
+ void               TogglePerformanceOverlay() noexcept;
+ // Switches between the compact and the detailed panel, showing the panel if it was hidden.
+ void TogglePerformanceOverlayDetails() noexcept;
++// AkiBot menu: 0 = hidden, 1 = FPS line only, 2 = compact panel, 3 = detailed panel.
++void SetPerformanceOverlayMode(int mode) noexcept;
+ 
+ // Changes when the panel needs a repaint without a guest flip (toggled, or the guest stalled).
+ [[nodiscard]] uint64_t PerformanceOverlayRevision() noexcept;
+diff --git a/src/graphics/presentation/systemOverlay.cpp b/src/graphics/presentation/systemOverlay.cpp
+index 807ca52b..4bf05090 100644
+--- a/src/graphics/presentation/systemOverlay.cpp
++++ b/src/graphics/presentation/systemOverlay.cpp
+@@ -8,6 +8,7 @@
+ #include "common/stringUtils.h"
+ #include "gpu_blit_shaders/gpu_imgui_hdr_spv.h"
+ #include "graphics/host_gpu/graphicContext.h"
++#include "graphics/presentation/akibotMenu.h"
+ #include "graphics/presentation/ddsImage.h"
+ #include "graphics/presentation/performanceOverlay.h"
+ #include "graphics/presentation/window/hostInput.h"
+@@ -123,7 +124,7 @@ bool HostQueueExternalInput(uint64_t generation, ExternalInput input) {
+ 
+ } // namespace Ime
+ 
+-enum class OverlayKind : uint8_t { None, Ime, Dialog };
++enum class OverlayKind : uint8_t { None, Ime, Dialog, Menu };
+ 
+ struct OverlaySession {
+ 	OverlayKind kind       = OverlayKind::None;
+@@ -147,6 +148,10 @@ bool GetOverlaySnapshot(OverlaySnapshot* snapshot) {
+ 		snapshot->session = {OverlayKind::Ime, snapshot->ime.generation};
+ 		return true;
+ 	}
++	if (AkiBotMenu::IsOpen()) {
++		snapshot->session = {OverlayKind::Menu, AkiBotMenu::Generation()};
++		return true;
++	}
+ 	snapshot->session = {};
+ 	return false;
+ }
+@@ -392,7 +397,7 @@ void RefreshVisibility() {
+ 	bool capture_keyboard   = false;
+ 	bool text_input         = false;
+ 	bool multiline          = false;
+-	if (snapshot.session.kind == OverlayKind::Dialog) {
++	if (snapshot.session.kind == OverlayKind::Dialog || snapshot.session.kind == OverlayKind::Menu) {
+ 		capture_controller = true;
+ 		capture_keyboard   = true;
+ 	} else if (snapshot.session.kind == OverlayKind::Ime) {
+@@ -418,6 +423,10 @@ void RefreshVisibility() {
+ 	}
+ }
+ 
++void RefreshSystemOverlayVisibilityImpl() {
++	RefreshVisibility();
++}
++
+ void OnCoreVisibilityChanged(bool, uint64_t) {
+ 	RefreshVisibility();
+ }
+@@ -617,6 +626,10 @@ ImGuiKey ControllerButtonToKey(int button) {
+ 		case SDL_GAMEPAD_BUTTON_DPAD_RIGHT: return ImGuiKey_GamepadDpadRight;
+ 		case SDL_GAMEPAD_BUTTON_DPAD_UP: return ImGuiKey_GamepadDpadUp;
+ 		case SDL_GAMEPAD_BUTTON_DPAD_DOWN: return ImGuiKey_GamepadDpadDown;
++		// AkiBot menu: tabs and closing. Keys ImGui's own navigation leaves alone.
++		case SDL_GAMEPAD_BUTTON_LEFT_SHOULDER: return ImGuiKey_F13;
++		case SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER: return ImGuiKey_F14;
++		case SDL_GAMEPAD_BUTTON_START: return ImGuiKey_F15;
+ 		default: return ImGuiKey_None;
+ 	}
+ }
+@@ -766,6 +779,33 @@ bool ProcessSystemOverlayInput(const SDL_Event& event) {
+ 	if (keyboard_event && !g_input_keyboard) {
+ 		return false;
+ 	}
++	if (keyboard_event && session.kind == OverlayKind::Menu) {
++		if (event.type == SDL_EVENT_KEY_DOWN || event.type == SDL_EVENT_KEY_UP) {
++			int button = -1;
++			switch (event.key.key) {
++				case SDLK_UP: button = SDL_GAMEPAD_BUTTON_DPAD_UP; break;
++				case SDLK_DOWN: button = SDL_GAMEPAD_BUTTON_DPAD_DOWN; break;
++				case SDLK_LEFT: button = SDL_GAMEPAD_BUTTON_DPAD_LEFT; break;
++				case SDLK_RIGHT: button = SDL_GAMEPAD_BUTTON_DPAD_RIGHT; break;
++				case SDLK_RETURN:
++				case SDLK_KP_ENTER:
++				case SDLK_SPACE: button = SDL_GAMEPAD_BUTTON_SOUTH; break;
++				case SDLK_BACKSPACE: button = SDL_GAMEPAD_BUTTON_EAST; break;
++				case SDLK_PAGEUP:
++				case SDLK_Q: button = SDL_GAMEPAD_BUTTON_LEFT_SHOULDER; break;
++				case SDLK_PAGEDOWN:
++				case SDLK_TAB:
++				case SDLK_E: button = SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER; break;
++				default: break;
++			}
++			if (button >= 0 && !(event.type == SDL_EVENT_KEY_DOWN && event.key.repeat &&
++			                     button != SDL_GAMEPAD_BUTTON_DPAD_UP && button != SDL_GAMEPAD_BUTTON_DPAD_DOWN)) {
++				QueueInput({InputKind::Button, session, button,
++				            event.type == SDL_EVENT_KEY_DOWN ? 1.0f : 0.0f, 0.0f});
++			}
++		}
++		return true;
++	}
+ 	if (keyboard_event && session.kind == OverlayKind::Dialog) {
+ 		if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat &&
+ 		    (event.key.key == SDLK_RETURN || event.key.key == SDLK_KP_ENTER ||
+@@ -844,6 +884,15 @@ bool ProcessSystemOverlayInput(const SDL_Event& event) {
+ 	}
+ }
+ 
++void RefreshSystemOverlayVisibility() {
++	RefreshSystemOverlayVisibilityImpl();
++}
++
++bool SystemOverlayModalActive() {
++	OverlaySnapshot snapshot;
++	return GetOverlaySnapshot(&snapshot) && snapshot.session.kind != OverlayKind::Menu;
++}
++
+ void NotifyTrophyUnlocked(std::string_view name, int32_t grade,
+                           std::span<const std::byte> icon_png) {
+ 	std::scoped_lock lock(g_trophy_notification_mutex);
+@@ -1833,7 +1882,9 @@ struct SystemOverlay::Impl {
+ 		const float performance_bottom = DrawPerformanceOverlay(graphics, frame_extent);
+ 		GetOverlaySnapshot(&snapshot);
+ 		if (has_overlay && snapshot.session == prepared_session) {
+-			if (snapshot.session.kind == OverlayKind::Dialog) {
++			if (snapshot.session.kind == OverlayKind::Menu) {
++				AkiBotMenu::Draw(static_cast<float>(frame_extent.width), static_cast<float>(frame_extent.height));
++			} else if (snapshot.session.kind == OverlayKind::Dialog) {
+ 				DrawDialog(snapshot.dialog, frame_extent);
+ 			} else {
+ 				DrawIme(snapshot.ime, frame_extent);
+diff --git a/src/graphics/presentation/systemOverlay.h b/src/graphics/presentation/systemOverlay.h
+index 7a3c1e94..06259397 100644
+--- a/src/graphics/presentation/systemOverlay.h
++++ b/src/graphics/presentation/systemOverlay.h
+@@ -27,6 +27,10 @@ void                     HideSplashScreen();
+ void                     InitializeSystemOverlayInput(SDL_Window* window);
+ void                     ShutdownSystemOverlayInput();
+ bool                     ProcessSystemOverlayInput(const SDL_Event& event);
++// Re-reads which overlay is shown (the AkiBot menu calls it when it opens or closes).
++void                     RefreshSystemOverlayVisibility();
++// True while a system dialog or the on-screen keyboard is shown (they keep Escape for themselves).
++[[nodiscard]] bool       SystemOverlayModalActive();
+ SystemOverlayVisualState GetSystemOverlayVisualState() noexcept;
+ void                     NotifyTrophyUnlocked(std::string_view name, int32_t grade,
+                                               std::span<const std::byte> icon_png);
+diff --git a/src/graphics/presentation/videoOut.cpp b/src/graphics/presentation/videoOut.cpp
+index ff70bf7f..eba418dc 100644
+--- a/src/graphics/presentation/videoOut.cpp
++++ b/src/graphics/presentation/videoOut.cpp
+@@ -923,6 +923,8 @@ std::atomic<uint32_t>& FrameLimitChoice() {
+ 	return choice;
+ }
+ 
++std::atomic<int> g_game_speed_percent {0}; // 0 = AKIBOT_GAME_SPEED_PERCENT
++
+ struct GameStep {
+ 	double*   fps   = nullptr;
+ 	float*    dt    = nullptr;
+@@ -982,6 +984,9 @@ void UpdateGameStep(GameStep& step, uint64_t now, uint64_t frequency, uint32_t l
+ 		step.ema          = step.ema == 0.0 ? rate : step.ema + (rate - step.ema) * 0.03;
+ 	}
+ 	step.last = now;
++	if (const int percent = g_game_speed_percent.load(std::memory_order_relaxed); percent != 0) {
++		step.scale = std::clamp(percent, 25, 150) / 100.0;
++	}
+ 	if (step.ema == 0.0) {
+ 		return;
+ 	}
+@@ -1007,6 +1012,24 @@ const char* FrameLimitLabel() {
+ 	                                      : FRAME_LIMIT_LABELS[choice];
+ }
+ 
++void SetFrameLimit(uint32_t fps) {
++	auto& setting = FrameLimitChoice();
++	for (uint32_t i = 0; i < FRAME_LIMITS.size(); ++i) {
++		if (FRAME_LIMITS[i] == fps) {
++			setting.store(i, std::memory_order_relaxed);
++			return;
++		}
++	}
++	g_custom_frame_limit.store(std::clamp<uint32_t>(fps, 10, 240), std::memory_order_relaxed);
++	std::snprintf(g_custom_frame_limit_label, sizeof(g_custom_frame_limit_label), "%u FPS",
++	              static_cast<unsigned>(std::clamp<uint32_t>(fps, 10, 240)));
++	setting.store(FRAME_LIMIT_CUSTOM, std::memory_order_relaxed);
++}
++
++void SetGameSpeedPercent(int percent) {
++	g_game_speed_percent.store(std::clamp(percent, 25, 150), std::memory_order_relaxed);
++}
++
+ bool CycleFrameLimit() {
+ 	auto& setting = FrameLimitChoice();
+ 	const auto choice = setting.load(std::memory_order_relaxed);
+diff --git a/src/graphics/presentation/videoOut.h b/src/graphics/presentation/videoOut.h
+index c4ce13e7..5b88107c 100644
+--- a/src/graphics/presentation/videoOut.h
++++ b/src/graphics/presentation/videoOut.h
+@@ -54,6 +54,9 @@ void                          VideoOutShutdown();
+ 
+ [[nodiscard]] const char* FrameLimitLabel();
+ bool CycleFrameLimit();
++// AkiBot menu: frames per second (0 = no limit) and game speed percent (25..150), applied at once.
++void SetFrameLimit(uint32_t fps);
++void SetGameSpeedPercent(int percent);
+ 
+ KYTY_SYSV_ABI int  VideoOutOpen(int user_id, int bus_type, int index, const void* param);
+ KYTY_SYSV_ABI int  VideoOutClose(int handle);
+diff --git a/src/graphics/presentation/window/window.cpp b/src/graphics/presentation/window/window.cpp
+index 67b561fa..1c0dac7f 100644
+--- a/src/graphics/presentation/window/window.cpp
++++ b/src/graphics/presentation/window/window.cpp
+@@ -16,6 +16,7 @@
+ #include "graphics/host_gpu/vulkanCommon.h"
+ #include "graphics/presentation/performanceOverlay.h"
+ #include "graphics/presentation/renderDoc.h"
++#include "graphics/presentation/akibotMenu.h"
+ #include "graphics/presentation/systemOverlay.h"
+ #include "graphics/presentation/videoOut.h"
+ #include "graphics/presentation/window/hostInput.h"
+@@ -185,7 +186,8 @@ static void GameEventKeyboard(const EventKeyboard& key) {
+ 	if (key.down) {
+ 		switch (key.key_code) {
+ 			case SDLK_F1:
+-				if (!key.repeat) {
++				// F1 opens the AkiBot menu (ProcessEvent); Ctrl+F1 keeps the RenderDoc capture.
++				if (!key.repeat && (key.mod & SDL_KMOD_CTRL) != 0) {
+ 					RenderDocRequestCapture();
+ 				}
+ 				break;
+@@ -514,8 +516,20 @@ void WindowContext::ProcessDisplayEvent(const SDL_DisplayEvent& display) {
+ void WindowContext::ProcessEvent(double time_s) {
+ 	auto& game  = loop;
+ 	auto* event = &game.event;
++	if (AkiBotMenu::ProcessWindowRequests(event->type)) {
++		return;
++	}
+ 	if (event->type == SDL_EVENT_KEY_DOWN || event->type == SDL_EVENT_KEY_UP) {
+ 		const bool pressed = event->type == SDL_EVENT_KEY_DOWN && event->key.repeat == 0;
++		// AkiBot menu: F1 or Escape (Escape stays with a system dialog or keyboard when one is open).
++		if (AkiBotMenu::Available() && (event->key.mod & SDL_KMOD_CTRL) == 0 &&
++		    (event->key.key == SDLK_F1 ||
++		     (event->key.key == SDLK_ESCAPE && (AkiBotMenu::IsOpen() || !SystemOverlayModalActive())))) {
++			if (pressed) {
++				AkiBotMenu::Toggle();
++			}
++			return;
++		}
+ 		switch (event->key.key) {
+ 			case SDLK_F7:
+ 				if (pressed) {
+-- 
+2.56.0.windows.4
+

@@ -4,7 +4,7 @@ Date: Thu, 12 Nov 2026 14:03:20 +0000
 Subject: [PATCH] feat(hybrid): opt-in relay of pad motion sensors to the host
  (ABI 1.5)
 
-ASTROHYBRID_PAD_MOTION=1 passes the controller's accelerometer and gyroscope
+AKIBOT_PAD_MOTION=1 passes the controller's accelerometer and gyroscope
 to the host's pad library through the new publish_pad_motion callback.
 
 Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
@@ -59,9 +59,9 @@ index 677582ba..666efc59 100644
  	}
  	Log(0, "input relay: Kyty pad %d for user %d -> host port 0%s", handle, user,
  	    g_host.fetch_pad_output != nullptr ? ", rumble, light bar and trigger effects <- host" : "");
-+	// ASTROHYBRID_PAD_MOTION=1: the controller's accelerometer and gyroscope reach the host's pad
++	// AKIBOT_PAD_MOTION=1: the controller's accelerometer and gyroscope reach the host's pad
 +	// library too (ABI 1.5), for games that read shaking or tilting. Off by default.
-+	const char* motion_env = std::getenv("ASTROHYBRID_PAD_MOTION");
++	const char* motion_env = std::getenv("AKIBOT_PAD_MOTION");
 +	const bool  motion     = motion_env != nullptr && motion_env[0] == '1' && g_host.publish_pad_motion != nullptr;
 +	bool        motion_seen = false;
 +	Log(0, "input relay: motion sensors %s", motion ? "-> host" : "not relayed");

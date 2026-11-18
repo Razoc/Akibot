@@ -13,7 +13,7 @@ diff --git a/src/graphics/presentation/videoOut.cpp b/src/graphics/presentation/
 index c78125c8..6ef666c4 100644
 --- a/src/graphics/presentation/videoOut.cpp
 +++ b/src/graphics/presentation/videoOut.cpp
-@@ -885,15 +885,15 @@ static Live::Switch g_frame_limit_pacing("ASTROHYBRID_FPS_PACING", Live::ParseDe
+@@ -885,15 +885,15 @@ static Live::Switch g_frame_limit_pacing("AKIBOT_FPS_PACING", Live::ParseDe
  namespace {
  
  constexpr uint32_t FRAME_LIMIT_DISABLED = UINT32_MAX;
@@ -26,7 +26,7 @@ index c78125c8..6ef666c4 100644
  
  std::atomic<uint32_t>& FrameLimitChoice() {
  	static std::atomic<uint32_t> choice {[] {
- 		const char* value = std::getenv("ASTROHYBRID_FPS_LIMIT");
+ 		const char* value = std::getenv("AKIBOT_FPS_LIMIT");
  		if (value != nullptr) {
 -			constexpr std::array<const char*, 6> options {"30", "40", "45", "60", "120", "unlimited"};
 +			constexpr std::array<const char*, 10> options {"30", "35", "40", "45", "50", "55", "60", "90", "120", "unlimited"};
@@ -41,19 +41,19 @@ index c78125c8..6ef666c4 100644
  	uint64_t  last  = 0;
  };
  
- // ASTROHYBRID_GAME_SPEED=1 (default off): Astro Bot advances a fixed 1/FrameRate per frame from one
+ // AKIBOT_GAME_SPEED=1 (default off): Astro Bot advances a fixed 1/FrameRate per frame from one
  // global (eboot 0x8ff0040: f64 frame rate, f32 1/rate, u64 microseconds per frame; image +0x400000),
  // so below 60 FPS the game runs in slow motion (30 FPS = half speed). With the switch on, every
-+// present writes the measured frame rate there; ASTROHYBRID_GAME_SPEED_PERCENT (25..150, default 100)
++// present writes the measured frame rate there; AKIBOT_GAME_SPEED_PERCENT (25..150, default 100)
 +// scales the result (90 = 10% slower). Every
  // present writes the measured frame rate there (the limit itself when the cadence holds it), clamped
- // to 20..120. ASTROHYBRID_GAME_STEP_ADDR overrides the address; the block is checked first.
+ // to 20..120. AKIBOT_GAME_STEP_ADDR overrides the address; the block is checked first.
  void UpdateGameStep(GameStep& step, uint64_t now, uint64_t frequency, uint32_t limit) {
 @@ -950,23 +953,26 @@ void UpdateGameStep(GameStep& step, uint64_t now, uint64_t frequency, uint32_t l
  		step.dt    = dt;
  		step.us    = reinterpret_cast<uint64_t*>(addr + 16);
  		step.ready = true;
-+		if (const char* speed = std::getenv("ASTROHYBRID_GAME_SPEED_PERCENT"); speed != nullptr) {
++		if (const char* speed = std::getenv("AKIBOT_GAME_SPEED_PERCENT"); speed != nullptr) {
 +			step.scale = std::clamp(std::strtod(speed, nullptr), 25.0, 150.0) / 100.0;
 +		}
  		std::printf("Game speed: frame-rate block at 0x%llx (game rate %g), real-time step on\n",
