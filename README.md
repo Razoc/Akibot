@@ -13,7 +13,10 @@ travaillant sur la couche de traduction (CPU et GPU), jamais sur le jeu lui-mêm
 
 ## État actuel
 
-Version **0.3.0** : premier runtime 100 % AkiBot, DLSS / FSR / génération d'images et menu en jeu.
+Version **0.3.1** : AkiBot s'installe et se lance depuis [RecompLauncher](https://recomplauncher.com) (voir
+[Avec RecompLauncher](#avec-recomplauncher)). Rien ne change pour le jeu ni pour le lanceur habituel.
+
+Nouveautés de la **0.3.0** : premier runtime 100 % AkiBot, DLSS / FSR / génération d'images et menu en jeu.
 
 - **Menu en jeu** (F1 ou Échap, manette comprise) avec toutes les options du lanceur. Limite de FPS, compteur,
   plein écran et vitesse du jeu changent en direct ; le reste est enregistré pour le prochain lancement (« * »).
