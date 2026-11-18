@@ -4,9 +4,11 @@
 # Usage : powershell -NoProfile -ExecutionPolicy Bypass -File Tools\release\make_launcher_zip.ps1 -Version 0.3.0
 param(
     [Parameter(Mandatory = $true)][string]$Version,
-    [string]$Out = (Join-Path $PSScriptRoot '..\..\..\Release')
+    [string]$Out = ''
 )
 $ErrorActionPreference = 'Stop'
+# Par défaut : F:\AkiBot\Release, à côté du dépôt ($PSScriptRoot est vide dans le bloc param sous PowerShell 5.1).
+if (-not $Out) { $Out = Join-Path $PSScriptRoot '..\..\..\Release' }
 $root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $exe = Join-Path $root 'AkiBot.App\bin\Release\AkiBot.exe'
 $manifest = Join-Path $root 'recomplauncher.json'
