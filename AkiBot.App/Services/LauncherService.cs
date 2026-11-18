@@ -162,6 +162,9 @@ namespace AkiBot.App.Services
 
             // Fullscreen
             env["KYTY_GPU_FULLSCREEN"] = settings.Fullscreen ? "1" : "0";
+            // Started from RecompLauncher's Big Picture mode (controller, couch): always full screen.
+            if (Environment.GetEnvironmentVariable("RECOMPLAUNCHER_MODE") == "bigpicture")
+                env["KYTY_GPU_FULLSCREEN"] = "1";
 
             // Game speed
             // Always real time, where the game version is known: it writes one global at a fixed address.

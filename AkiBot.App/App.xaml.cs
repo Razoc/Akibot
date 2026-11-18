@@ -65,6 +65,14 @@ namespace AkiBot.App
                 RunSetupWithoutWindow(e.Args[1]);
                 return;
             }
+            // AkiBot.exe --prepare "<dump folder>": for RecompLauncher (recomplauncher.json). Installs or updates the
+            // runtime in this exe's folder, then sets the game up from the dump, without a window. Prints
+            // "progress <0-1> <text>" lines; exit code 0 on success.
+            if (e.Args.Length == 2 && e.Args[0] == "--prepare")
+            {
+                RunPrepareWithoutWindow(e.Args[1]);
+                return;
+            }
             // AkiBot.exe --install "<folder>": the install window's work without a window (exit code 0 on
             // success; progress in <folder>\Logs\install.log). No shortcuts.
             if (e.Args.Length == 2 && e.Args[0] == "--install")
@@ -260,6 +268,51 @@ namespace AkiBot.App
             catch (Exception ex)
             {
                 File.AppendAllText(log, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] FAILED: {ex}\r\n");
+                Shutdown(2);
+            }
+        }
+
+        private async void RunPrepareWithoutWindow(string dump)
+        {
+            var root = GetRootDirectory();
+            var log = Path.Combine(root, "Logs", "setup.log");
+            StreamWriter? output = null;
+            try { output = new StreamWriter(Console.OpenStandardOutput(), new System.Text.UTF8Encoding(false)) { AutoFlush = true }; }
+            catch { }
+            void Print(double share, string text)
+            {
+                try { output?.WriteLine(FormattableString.Invariant($"progress {share:0.00} {text}")); }
+                catch { }
+            }
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(log)!);
+                var last = "";
+                IProgress<(int Percent, string Message)> Part(double from, double to) =>
+                    new Progress<(int Percent, string Message)>(p =>
+                    {
+                        if (p.Message == last) return;
+                        last = p.Message;
+                        Print(from + (to - from) * Math.Max(0, Math.Min(100, p.Percent)) / 100.0, p.Message);
+                        File.AppendAllText(log, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {p.Percent,3}% {p.Message}\r\n");
+                    });
+
+                if (!AkiBotInfo.IsInstallFolder(root) || AkiBotInfo.InstalledRuntimeVersion(root) != AkiBotInfo.RuntimeVersion)
+                    await AkiBotInstaller.InstallRuntimeAsync(root, Part(0, 0.6), System.Threading.CancellationToken.None);
+                var features = await new GameSetup(root).RunAsync(dump, Part(0.6, 1));
+                InitializeSettings();
+                _settings.FirstRunComplete = true;
+                _settings.GameDumpPath = dump;
+                _settings.GameVersion = features.Version;
+                _settings.GameTitleId = features.TitleId;
+                _settingsManager.Save(_settings);
+                Print(1, "AkiBot " + AkiBotInfo.CurrentVersionText);
+                Shutdown(0);
+            }
+            catch (Exception ex)
+            {
+                try { File.AppendAllText(log, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] FAILED: {ex}\r\n"); } catch { }
+                try { Console.Error.WriteLine(ex.Message); } catch { }
                 Shutdown(2);
             }
         }
