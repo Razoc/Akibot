@@ -18,9 +18,9 @@ namespace AkiBot.App.Services
         // The runtime (kyty_gpu.dll, PS5 system libraries, relinker, DLSS and FSR files...) is AkiBot's own
         // package (Tools\release\make_runtime.ps1), pinned by version and SHA-256. A new AkiBot version can move the pin; installed
         // copies then offer to update the runtime.
-        public const string RuntimeVersion = "0.3.0";
-        public const string RuntimeUrl = "https://github.com/" + Repo + "/releases/download/v0.3.0/AkiBot-runtime-0.3.0.zip";
-        public const string RuntimeSha256 = "f196ad64c2404036ef0ae793b5fe11071e0538ae2c851dc2b383adc8143bfefa";
+        public const string RuntimeVersion = "0.3.1";
+        public const string RuntimeUrl = "https://github.com/" + Repo + "/releases/download/v0.3.4/AkiBot-runtime-0.3.1.zip";
+        public const string RuntimeSha256 = "f1bfca68184821bdcbd94fdff0de0b82b79c864c871e8c07d3861c4a430b879b";
         public const long RuntimeZipBytes = 201_001_753;
         public const long NeededBytes = 3L * 1024 * 1024 * 1024; // runtime + game builds, with margin
         public const string RuntimeVersionFile = "akibot-runtime.txt";
