@@ -75,7 +75,7 @@
         { "label": "144 FPS", "set": { "fgtarget": "5" } },
         { "label": "165 FPS", "set": { "fgtarget": "6" } }
       ],
-      "defaults": { "fgtarget": "2" }
+      "defaults": { "fgtarget": "4" }
     },
     {
       "id": "fps", "label": "Frame rate limit", "group": "Picture",

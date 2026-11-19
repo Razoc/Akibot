@@ -521,14 +521,18 @@ namespace AkiBot.App.ViewModels
                 best.LowLatency = true;
             }
 
-            if (pc.RtxSeries >= 40)
+            // On-screen target from the screen for every card (AMD FSR 3 frame generation uses it too:
+            // with a 60 target its 2x held the game at 30).
             {
-                best.FrameGen = 1; // Auto
-                int goal = pc.RtxSeries >= 50 && pc.RefreshRate >= 120 ? 120 :
-                          pc.RtxSeries >= 50 && pc.RefreshRate >= 90 ? 90 : 60;
+                int goal = pc.RefreshRate >= 120 ? 120 : pc.RefreshRate >= 90 ? 90 : 60;
                 var targetValues = new[] { 0, 50, 60, 90, 120, 144, 165 };
                 best.Target = Array.IndexOf(targetValues, goal);
                 if (best.Target < 0) best.Target = 2;
+            }
+
+            if (pc.RtxSeries >= 40)
+            {
+                best.FrameGen = 1; // Auto
             }
 
             return best;

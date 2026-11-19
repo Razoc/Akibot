@@ -44,7 +44,8 @@ namespace AkiBot.App.Models
         public bool LowLatency { get; set; } = false;
 
         [JsonPropertyName("fgtarget")]
-        public int FrameGenTarget { get; set; } = 2;
+        // 120 FPS on screen: with 2x the game is capped at 60 (a 60 target held it at 30).
+        public int FrameGenTarget { get; set; } = 4;
 
         [JsonPropertyName("pad")]
         public int Controller { get; set; } = 0;
