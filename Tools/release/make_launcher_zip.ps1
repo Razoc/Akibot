@@ -20,7 +20,8 @@ if (-not $exeVersion.StartsWith($Version)) { throw "AkiBot.exe est en $exeVersio
 $info = Get-Content (Join-Path $root 'AkiBot.App\Services\AkiBotInfo.cs') -Raw
 $runtime = [regex]::Match($info, 'RuntimeVersion = "([^"]+)"').Groups[1].Value
 $json = Get-Content $manifest -Raw -Encoding UTF8 | ConvertFrom-Json
-if ($json.prepare.version -ne $runtime) { throw "recomplauncher.json : prepare.version = $($json.prepare.version), runtime épinglé = $runtime" }
+# Sans « configuration facile » (pas de bloc prepare), AkiBot installe lui-même le runtime au premier lancement.
+if ($json.prepare -and $json.prepare.version -ne $runtime) { throw "recomplauncher.json : prepare.version = $($json.prepare.version), runtime épinglé = $runtime" }
 
 New-Item -ItemType Directory -Force $Out | Out-Null
 $zip = Join-Path (Resolve-Path $Out) "AkiBot-v$Version-Windows-x64.zip"

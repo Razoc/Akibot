@@ -14,7 +14,7 @@ travaillant sur la couche de traduction (CPU et GPU), jamais sur le jeu lui-mêm
 ## État actuel
 
 Version **0.3.2** : correctifs RecompLauncher (manette et menu Échap au lancement, réglages de la page du jeu
-pris en compte). AkiBot s'installe et se lance depuis [RecompLauncher](https://recomplauncher.com) (voir
+pris en compte, plus de « configuration facile » : AkiBot fait sa propre installation au premier lancement). AkiBot s'installe et se lance depuis [RecompLauncher](https://recomplauncher.com) (voir
 [Avec RecompLauncher](#avec-recomplauncher)).
 
 Nouveautés de la **0.3.0** : premier runtime 100 % AkiBot, DLSS / FSR / génération d'images et menu en jeu.
@@ -116,9 +116,9 @@ dossier d'installation. `AkiBot.exe --play` lance le jeu avec les réglages enre
 ### Avec RecompLauncher
 
 AkiBot fournit un `recomplauncher.json` dans le zip `AkiBot-v<version>-Windows-x64.zip` de chaque release :
-[RecompLauncher](https://recomplauncher.com) demande ton dossier de dump, installe le runtime et convertit le jeu
-(`AkiBot.exe --prepare "<dossier du dump>"`, sans fenêtre), affiche les réglages graphiques sur la page du jeu,
-puis lance la partie avec `AkiBot.exe --play`. En mode Big Picture, le jeu s'ouvre en plein écran.
+[RecompLauncher](https://recomplauncher.com) installe AkiBot et affiche les réglages graphiques sur la page du jeu.
+Au premier clic sur Jouer, AkiBot installe son runtime dans le dossier de RecompLauncher puis ouvre son assistant
+(choix du dossier de dump, conversion) ; ensuite, Jouer lance la partie directement (`AkiBot.exe --play`). En mode Big Picture, le jeu s'ouvre en plein écran.
 
 > English: download **AkiBot.exe** from the latest release, run it, pick a language and an install folder,
 > then point it at your own Astro Bot dump. AkiBot updates itself.

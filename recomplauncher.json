@@ -3,19 +3,6 @@
   "format": 1,
   "name": "AkiBot",
   "repo": "Razoc/AkiBot",
-  "game": {
-    "kind": "folder",
-    "label": "Your decrypted PS5 dump of Astro Bot (PPSA…): the folder with eboot.bin, sce_module and sce_sys. It is never changed.",
-    "check": { "file": "eboot.bin" }
-  },
-  "prepare": {
-    "program": ["AkiBot.exe"],
-    "args": ["--prepare", "{game}"],
-    "label": "AkiBot runtime (192 MB) and the game converted from your dump",
-    "timeout": 1800,
-    "version": "0.3.0",
-    "done": ["{install}/Build/RunHybrid/AstroBot.exe", "{install}/Build/RunHybrid/kyty_gpu.dll"]
-  },
   "start": {
     "program": ["AkiBot.exe"],
     "args": ["--play"]
@@ -24,8 +11,7 @@
     {
       "id": "main",
       "format": "json",
-      "file": [{ "path": "{install}/Build/akibot-settings.json" }],
-      "game_path": "gameDumpPath"
+      "file": [{ "path": "{install}/Build/akibot-settings.json" }]
     }
   ],
   "saves": [

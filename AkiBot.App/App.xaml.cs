@@ -87,8 +87,9 @@ namespace AkiBot.App
                 RunGameWithoutWindow(e.Args.Skip(1).ToArray());
                 return;
             }
-            // AkiBot.exe --play: what the Play button does (saved settings), without a window.
-            if (e.Args.Length == 1 && e.Args[0] == "--play")
+            // AkiBot.exe --play: what the Play button does (saved settings), without a window. Before the game is
+            // set up (first Play from RecompLauncher), the usual windows run instead: runtime, then setup wizard.
+            if (e.Args.Length == 1 && e.Args[0] == "--play" && ExistingInstallation())
             {
                 PlayWithoutWindow();
                 return;
@@ -168,6 +169,17 @@ namespace AkiBot.App
         private void StartFromOutsideInstall(AkiBotInfo.UserData userData)
         {
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            // Started by RecompLauncher: AkiBot lives in the launcher's folder for it, so the runtime goes there
+            // too, without asking for a folder (and never another AkiBot install on this PC).
+            if (Environment.GetEnvironmentVariable("RECOMPLAUNCHER") == "1")
+            {
+                var here = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "";
+                var runtime = new InstallWindow(here);
+                if (runtime.ShowDialog() != true) { Shutdown(0); return; }
+                Process.Start(new ProcessStartInfo(Path.Combine(here, AkiBotInfo.ExeName)) { UseShellExecute = true, WorkingDirectory = here });
+                Shutdown(0);
+                return;
+            }
             var installDir = AkiBotInfo.IsInstallFolder(userData.InstallDir) ? userData.InstallDir : null;
             if (installDir == null)
             {
