@@ -3,6 +3,19 @@
   "format": 1,
   "name": "AkiBot",
   "repo": "Razoc/AkiBot",
+  "game": {
+    "kind": "folder",
+    "label": "Your decrypted PS5 dump of Astro Bot (PPSA…): pick the folder that holds eboot.bin, sce_module and sce_sys. It is never changed.",
+    "check": { "file": "eboot.bin" }
+  },
+  "prepare": {
+    "program": ["AkiBot.exe"],
+    "args": ["--prepare", "{game}"],
+    "label": "AkiBot runtime (192 MB) and the game converted from your dump",
+    "timeout": 1800,
+    "version": "0.3.0",
+    "done": ["{install}/Build/RunHybrid/AstroBot.exe", "{install}/Build/RunHybrid/kyty_gpu.dll"]
+  },
   "start": {
     "program": ["AkiBot.exe"],
     "args": ["--play"]
@@ -20,7 +33,8 @@
     {
       "id": "main",
       "format": "json",
-      "file": [{ "path": "{install}/Build/akibot-settings.json" }]
+      "file": [{ "path": "{install}/Build/akibot-settings.json" }],
+      "game_path": "gameDumpPath"
     }
   ],
   "saves": [
@@ -79,7 +93,7 @@
     },
     {
       "id": "fps", "label": "Frame rate limit", "group": "Picture",
-      "help": "Without frame generation. 30 is the steadiest; the game runs at real speed at every limit.",
+      "help": "Without frame generation. AkiBot sets it for your PC on the first Play (60 with 12 or more processor threads, else 30, the steadiest); the game runs at real speed at every limit.",
       "choices": [
         { "label": "30", "set": { "fps": "0" } },
         { "label": "35", "set": { "fps": "1" } },
@@ -89,7 +103,7 @@
         { "label": "60", "set": { "fps": "5" } },
         { "label": "No limit", "set": { "fps": "6" } }
       ],
-      "defaults": { "fps": "0" },
+      "defaults": { "fps": "5" },
       "when": { "fgmode": "0" }
     },
     {

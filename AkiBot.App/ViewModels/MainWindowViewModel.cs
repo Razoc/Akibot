@@ -309,17 +309,8 @@ namespace AkiBot.App.ViewModels
         {
             if (HardwareInfo == null) return;
 
-            var best = PickBestSettings(HardwareInfo);
-
-            Settings.Lighting = 0; // Faster lighting
-            Settings.Fps = 0; // 30 FPS steady
-            Settings.Speed = 0; // 100% real-time
-            Settings.Size = best.Size;
-            Settings.Fullscreen = true;
-            Settings.Upscale = best.Upscale;
-            Settings.FrameGenMode = best.FrameGen;
-            Settings.FrameGenTarget = best.Target;
-            Settings.LowLatency = best.LowLatency;
+            // 60 FPS where the processor holds it, frame generation off (RecommendedSettings).
+            RecommendedSettings.Apply(Settings, HardwareInfo);
             Settings.Controller = 0; // Auto
             Settings.RumblePercent = 70; // Medium
             Settings.Rumble = RumbleSetting.ToLegacyIndex(70);

@@ -30,6 +30,16 @@ namespace AkiBot.App.Services
                 throw new FileNotFoundException("AstroBot.exe not found in RunHybrid", runHybrid);
             }
 
+            // First Play after a setup (wizard, RecompLauncher's Easy Setup): settings for this PC, once.
+            if (settings.ApplyBestOnStart)
+            {
+                try
+                {
+                    hardware ??= new HardwareDetector().DetectHardware();
+                    RecommendedSettings.Apply(settings, hardware);
+                }
+                catch { settings.ApplyBestOnStart = false; }
+            }
             settings.LastLaunched = DateTime.Now;
             _settingsManager.Save(settings);
 

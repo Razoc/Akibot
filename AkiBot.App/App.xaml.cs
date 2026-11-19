@@ -260,6 +260,7 @@ namespace AkiBot.App
 
         private async void RunSetupWithoutWindow(string dump)
         {
+            dump = RecommendedSettings.DumpFolder(dump);
             var root = GetRootDirectory();
             var log = Path.Combine(root, "Logs", "setup.log");
             try
@@ -286,6 +287,8 @@ namespace AkiBot.App
 
         private async void RunPrepareWithoutWindow(string dump)
         {
+            // Easy Setup may give eboot.bin or a folder above the dump: the folder that holds eboot.bin.
+            dump = RecommendedSettings.DumpFolder(dump);
             var root = GetRootDirectory();
             var log = Path.Combine(root, "Logs", "setup.log");
             StreamWriter? output = null;
@@ -314,6 +317,7 @@ namespace AkiBot.App
                 var features = await new GameSetup(root).RunAsync(dump, Part(0.6, 1));
                 InitializeSettings();
                 _settings.FirstRunComplete = true;
+                _settings.ApplyBestOnStart = true; // settings for this PC on the first Play
                 _settings.GameDumpPath = dump;
                 _settings.GameVersion = features.Version;
                 _settings.GameTitleId = features.TitleId;
