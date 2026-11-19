@@ -7,6 +7,15 @@
     "program": ["AkiBot.exe"],
     "args": ["--play"]
   },
+  "exit_codes": {
+    "0": "ok",
+    "-1073741819": "AkiBot stopped because of a crash. Please send a report from the launcher: it includes Logs/akibot-summary.txt, which tells us your PC, settings and what went wrong.",
+    "3221225477": "AkiBot stopped because of a crash. Please send a report from the launcher: it includes Logs/akibot-summary.txt, which tells us your PC, settings and what went wrong.",
+    "-1073740791": "AkiBot stopped because of a crash. Please send a report from the launcher: it includes Logs/akibot-summary.txt, which tells us your PC, settings and what went wrong.",
+    "3221226505": "AkiBot stopped because of a crash. Please send a report from the launcher: it includes Logs/akibot-summary.txt, which tells us your PC, settings and what went wrong.",
+    "-1073741515": "A file the game needs is missing (a DLL). Reinstall AkiBot from the launcher.",
+    "3221225781": "A file the game needs is missing (a DLL). Reinstall AkiBot from the launcher."
+  },
   "config": [
     {
       "id": "main",

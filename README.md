@@ -13,8 +13,9 @@ travaillant sur la couche de traduction (CPU et GPU), jamais sur le jeu lui-mêm
 
 ## État actuel
 
-Version **0.3.2** : correctifs RecompLauncher (manette et menu Échap au lancement, réglages de la page du jeu
-pris en compte, plus de « configuration facile » : AkiBot fait sa propre installation au premier lancement). AkiBot s'installe et se lance depuis [RecompLauncher](https://recomplauncher.com) (voir
+Version **0.3.3** : résumé de session `Logs\akibot-summary.txt` (PC, réglages, FPS, saccades, erreurs, plantage),
+logs allégés et messages de plantage dans RecompLauncher. 0.3.2 : correctifs RecompLauncher (manette et menu Échap,
+réglages de la page du jeu, plus de « configuration facile »). AkiBot s'installe et se lance depuis [RecompLauncher](https://recomplauncher.com) (voir
 [Avec RecompLauncher](#avec-recomplauncher)).
 
 Nouveautés de la **0.3.0** : premier runtime 100 % AkiBot, DLSS / FSR / génération d'images et menu en jeu.
@@ -167,7 +168,8 @@ Les idées, mesures et pull requests sont les bienvenues :
 
 - Ouvre une issue avec ta config (CPU, GPU, RAM, pilote), la version de ton dump (`sce_sys/param.json` →
   `titleId` et `contentVersion`) et ce que tu as mesuré.
-- Joins les logs (`Logs\setup.log`, `Logs\akibot-launch.log`, `Logs\hybrid-run.err.log`) **après avoir retiré tes chemins perso**.
+- Joins les logs (`Logs\akibot-summary.txt` d'abord, puis `Logs\setup.log`, `Logs\akibot-launch.log`,
+  `Logs\hybrid-run.err.log`) **après avoir retiré tes chemins perso**. Depuis RecompLauncher, le rapport du jeu les contient déjà.
 - Ne publie **jamais** de fichier du jeu, ni `AstroBot.exe`, ni le dossier `Build\` : c'est du code du jeu
   converti.
 

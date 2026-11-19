@@ -33,7 +33,7 @@ namespace AkiBot.App.Services
             settings.LastLaunched = DateTime.Now;
             _settingsManager.Save(settings);
 
-            return await StartGameAsync(BuildEnvironmentVariables(settings, hardware), Array.Empty<string>());
+            return await StartGameAsync(BuildEnvironmentVariables(settings, hardware), Array.Empty<string>(), hardware);
         }
 
         // AkiBot.exe --run [game arguments]: the game with the runtime defaults only, the caller's environment
@@ -48,7 +48,7 @@ namespace AkiBot.App.Services
             return StartGameAsync(new Dictionary<string, string>(), gameArgs);
         }
 
-        private async Task<int> StartGameAsync(Dictionary<string, string> variables, string[] gameArgs)
+        private async Task<int> StartGameAsync(Dictionary<string, string> variables, string[] gameArgs, HardwareInfo? hardware = null)
         {
             var runHybrid = Path.Combine(_rootDirectory, "Build", "RunHybrid");
             var psi = new ProcessStartInfo
@@ -65,6 +65,9 @@ namespace AkiBot.App.Services
                 env[kvp.Key] = kvp.Value;
             }
             RuntimeDefaults.Apply(env, runHybrid);
+            // One line per frame for akibot-summary.txt (FPS, 1% low, stutters); a path set beforehand wins.
+            if (string.IsNullOrEmpty(env["KYTY_FRAME_TIMES_LOG"]))
+                env["KYTY_FRAME_TIMES_LOG"] = SessionReport.FrameTimesPath(_rootDirectory);
 
             psi.FileName = Path.Combine(runHybrid, env["AKIBOT_EXE"]);
             var args = new List<string>();
@@ -90,9 +93,21 @@ namespace AkiBot.App.Services
             catch { }
             using var outLog = new StreamWriter(Path.Combine(logs, "hybrid-run.out.log"), false);
             using var errLog = new StreamWriter(Path.Combine(logs, "hybrid-run.err.log"), false);
+            using var report = new SessionReport(_rootDirectory, logs, env, $"{psi.FileName} {psi.Arguments}", hardware);
             using var process = new Process { StartInfo = psi };
-            process.OutputDataReceived += (sender, e) => { if (e.Data != null) lock (outLog) outLog.WriteLine(e.Data); };
-            process.ErrorDataReceived += (sender, e) => { if (e.Data != null) lock (errLog) errLog.WriteLine(e.Data); };
+            process.OutputDataReceived += (sender, e) =>
+            {
+                if (e.Data == null) return;
+                if (SessionReport.IsFileOpenTrace(e.Data)) { report.NoteFileOpen(); return; }
+                lock (outLog) outLog.WriteLine(e.Data);
+                report.Observe(e.Data, false);
+            };
+            process.ErrorDataReceived += (sender, e) =>
+            {
+                if (e.Data == null) return;
+                lock (errLog) errLog.WriteLine(e.Data);
+                report.Observe(e.Data, true);
+            };
 
             // The game may take the foreground: started from RecompLauncher (or --play without a window), its
             // window otherwise opens behind and SDL ignores the controller and the Escape key.
@@ -105,6 +120,7 @@ namespace AkiBot.App.Services
 
             // WaitForExit() without a timeout also waits for the end of both outputs.
             await Task.Run(() => process.WaitForExit());
+            report.Finish(process.ExitCode);
             return process.ExitCode;
         }
 

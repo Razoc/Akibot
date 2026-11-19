@@ -111,6 +111,7 @@
     <Compile Include="Models\HardwareInfo.cs" />
     <Compile Include="Models\InstallationState.cs" />
     <Compile Include="Models\UpdateInfo.cs" />
+    <Compile Include="Services\SessionReport.cs" />
     <Compile Include="Services\SettingsManager.cs" />
     <Compile Include="Services\GameValidator.cs" />
     <Compile Include="Services\BuildManager.cs" />
