@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using AkiBot.App.Models;
@@ -93,15 +94,68 @@ namespace AkiBot.App.Services
             process.OutputDataReceived += (sender, e) => { if (e.Data != null) lock (outLog) outLog.WriteLine(e.Data); };
             process.ErrorDataReceived += (sender, e) => { if (e.Data != null) lock (errLog) errLog.WriteLine(e.Data); };
 
+            // The game may take the foreground: started from RecompLauncher (or --play without a window), its
+            // window otherwise opens behind and SDL ignores the controller and the Escape key.
+            AllowSetForegroundWindow(ASFW_ANY);
             process.Start();
             RuntimeDefaults.SetPriority(process, env["AKIBOT_PRIORITY"]);
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
+            _ = Task.Run(() => BringGameToFront(process));
 
             // WaitForExit() without a timeout also waits for the end of both outputs.
             await Task.Run(() => process.WaitForExit());
             return process.ExitCode;
         }
+
+        // Waits for the game's window (up to 2 minutes, the first start builds shaders) and puts it in front once.
+        private static void BringGameToFront(Process process)
+        {
+            try
+            {
+                var until = DateTime.UtcNow.AddMinutes(2);
+                while (DateTime.UtcNow < until)
+                {
+                    if (process.HasExited) return;
+                    process.Refresh();
+                    var window = process.MainWindowHandle;
+                    if (window != IntPtr.Zero && IsWindowVisible(window))
+                    {
+                        if (GetForegroundWindow() == window) return;
+                        // Windows only lets the foreground thread hand the focus over: join its input for the call.
+                        var foregroundThread = GetWindowThreadProcessId(GetForegroundWindow(), out _);
+                        var ownThread = GetCurrentThreadId();
+                        var joined = foregroundThread != 0 && foregroundThread != ownThread && AttachThreadInput(ownThread, foregroundThread, true);
+                        try
+                        {
+                            if (IsIconic(window)) ShowWindow(window, SW_RESTORE);
+                            BringWindowToTop(window);
+                            SetForegroundWindow(window);
+                        }
+                        finally
+                        {
+                            if (joined) AttachThreadInput(ownThread, foregroundThread, false);
+                        }
+                        return;
+                    }
+                    System.Threading.Thread.Sleep(250);
+                }
+            }
+            catch { }
+        }
+
+        private const int ASFW_ANY = -1;
+        private const int SW_RESTORE = 9;
+        [DllImport("user32.dll")] private static extern bool AllowSetForegroundWindow(int processId);
+        [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+        [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr window);
+        [DllImport("user32.dll")] private static extern bool BringWindowToTop(IntPtr window);
+        [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr window);
+        [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr window);
+        [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr window, int command);
+        [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
+        [DllImport("user32.dll")] private static extern bool AttachThreadInput(uint attach, uint attachTo, bool join);
+        [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
 
         private Dictionary<string, string> BuildEnvironmentVariables(AppSettings settings, HardwareInfo? hardware)
         {

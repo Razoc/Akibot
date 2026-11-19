@@ -13,8 +13,9 @@ travaillant sur la couche de traduction (CPU et GPU), jamais sur le jeu lui-mêm
 
 ## État actuel
 
-Version **0.3.1** : AkiBot s'installe et se lance depuis [RecompLauncher](https://recomplauncher.com) (voir
-[Avec RecompLauncher](#avec-recomplauncher)). Rien ne change pour le jeu ni pour le lanceur habituel.
+Version **0.3.2** : correctifs RecompLauncher (manette et menu Échap au lancement, réglages de la page du jeu
+pris en compte). AkiBot s'installe et se lance depuis [RecompLauncher](https://recomplauncher.com) (voir
+[Avec RecompLauncher](#avec-recomplauncher)).
 
 Nouveautés de la **0.3.0** : premier runtime 100 % AkiBot, DLSS / FSR / génération d'images et menu en jeu.
 
