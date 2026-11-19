@@ -26,3 +26,6 @@
 /AstroBot Launcher.exe
 /work/
 /Reddit post/
+
+# Résultats du banc (bench_level.ps1)
+Tools/akibot/bench-*.csv

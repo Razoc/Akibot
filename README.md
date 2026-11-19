@@ -13,9 +13,11 @@ travaillant sur la couche de traduction (CPU et GPU), jamais sur le jeu lui-mêm
 
 ## État actuel
 
-Version **0.3.3** : résumé de session `Logs\akibot-summary.txt` (PC, réglages, FPS, saccades, erreurs, plantage),
-logs allégés et messages de plantage dans RecompLauncher. 0.3.2 : correctifs RecompLauncher (manette et menu Échap,
-réglages de la page du jeu, plus de « configuration facile »). AkiBot s'installe et se lance depuis [RecompLauncher](https://recomplauncher.com) (voir
+Version **0.3.4** : configuration facile de RecompLauncher de retour (choix du dossier du dump, conversion
+automatique) ; réglages choisis pour le PC au premier lancement (60 FPS si le processeur a 12 threads ou plus, sinon
+30 ; DLSS sur les cartes RTX ; génération d'images jamais activée par défaut) ; mise à l'échelle simplifiée (celle du
+jeu, DLSS, DLAA, AMD FSR 3.1) ; objectif de génération d'images à 120 FPS par défaut. 0.3.3 : résumé de session
+`Logs\akibot-summary.txt`. AkiBot s'installe et se lance depuis [RecompLauncher](https://recomplauncher.com) (voir
 [Avec RecompLauncher](#avec-recomplauncher)).
 
 Nouveautés de la **0.3.0** : premier runtime 100 % AkiBot, DLSS / FSR / génération d'images et menu en jeu.
@@ -118,8 +120,10 @@ dossier d'installation. `AkiBot.exe --play` lance le jeu avec les réglages enre
 
 AkiBot fournit un `recomplauncher.json` dans le zip `AkiBot-v<version>-Windows-x64.zip` de chaque release :
 [RecompLauncher](https://recomplauncher.com) installe AkiBot et affiche les réglages graphiques sur la page du jeu.
-Au premier clic sur Jouer, AkiBot installe son runtime dans le dossier de RecompLauncher puis ouvre son assistant
-(choix du dossier de dump, conversion) ; ensuite, Jouer lance la partie directement (`AkiBot.exe --play`). En mode Big Picture, le jeu s'ouvre en plein écran.
+La configuration facile demande le dossier de ton dump (celui qui contient `eboot.bin` ; choisir le fichier
+`eboot.bin` ou le dossier au-dessus marche aussi), puis AkiBot installe son runtime et convertit le jeu
+(`AkiBot.exe --prepare`). Au premier clic sur Jouer, AkiBot choisit des réglages adaptés au PC ; ensuite, Jouer
+lance la partie directement (`AkiBot.exe --play`). En mode Big Picture, le jeu s'ouvre en plein écran.
 
 > English: download **AkiBot.exe** from the latest release, run it, pick a language and an install folder,
 > then point it at your own Astro Bot dump. AkiBot updates itself.
