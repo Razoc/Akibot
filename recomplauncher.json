@@ -41,13 +41,10 @@
   "settings": [
     {
       "id": "upscale", "label": "Upscaling", "group": "Picture",
-      "help": "DLSS needs an NVIDIA RTX card. FSR works on any card.",
+      "help": "A sharper picture than the game's own upscaling, at the game's own resolutions (no FPS gain). DLSS and DLAA need an NVIDIA RTX card; FSR works on any card.",
       "choices": [
         { "label": "Game's own", "set": { "upscale": "0" } },
-        { "label": "DLSS Quality", "set": { "upscale": "1" } },
-        { "label": "DLSS Balanced", "set": { "upscale": "2" } },
-        { "label": "DLSS Performance", "set": { "upscale": "3" } },
-        { "label": "DLSS Ultra Performance", "set": { "upscale": "4" } },
+        { "label": "DLSS", "set": { "upscale": "1" } },
         { "label": "DLAA", "set": { "upscale": "5" } },
         { "label": "AMD FSR 3.1", "set": { "upscale": "6" } }
       ],

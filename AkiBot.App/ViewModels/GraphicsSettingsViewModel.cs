@@ -218,17 +218,27 @@ namespace AkiBot.App.ViewModels
         }
 
         // Upscaling
-        public string[] UpscaleLabels => new[] { Loc.T("UI.UpscaleGame"), Loc.T("UI.DlssQuality"), Loc.T("UI.DlssBalanced"),
-                                                 Loc.T("UI.DlssPerformance"), Loc.T("UI.DlssUltra"), "DLAA", "AMD FSR 3.1" };
+        // The game picks its own render resolutions (dynamic resolution) and DLSS replaces its upscaling
+        // pass at those sizes, so the DLSS quality presets (Balanced, Performance...) changed nothing
+        // measurable: the list keeps DLSS and DLAA. Saved values stay the same (1 DLSS, 5 DLAA, 6 FSR);
+        // the old presets 2-4 show as DLSS.
+        private static readonly int[] UpscaleValues = { 0, 1, 5, 6 };
+
+        public string[] UpscaleLabels => new[] { Loc.T("UI.UpscaleGame"), "DLSS", "DLAA", "AMD FSR 3.1" };
 
         public int UpscaleIndex
         {
-            get => _mainViewModel.Settings.Upscale;
+            get
+            {
+                var value = _mainViewModel.Settings.Upscale;
+                return value >= 1 && value <= 4 ? 1 : Math.Max(0, Array.IndexOf(UpscaleValues, value));
+            }
             set
             {
-                if (_mainViewModel.Settings.Upscale != value)
+                var upscale = UpscaleValues[Math.Max(0, Math.Min(value, UpscaleValues.Length - 1))];
+                if (_mainViewModel.Settings.Upscale != upscale)
                 {
-                    _mainViewModel.Settings.Upscale = value;
+                    _mainViewModel.Settings.Upscale = upscale;
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(IsFrameGenAvailable));
                     OnPropertyChanged(nameof(FrameGenNote));

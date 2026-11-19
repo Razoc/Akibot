@@ -269,9 +269,9 @@ namespace AkiBot.App.Services
             else if (settings.Upscale != 0)
             {
                 env["AKIBOT_DLSS"] = "1";
-                // Upscale: 1 Quality, 2 Balanced, 3 Performance, 4 Ultra Performance, 5 DLAA (DLSS preset).
-                var dlssModes = new[] { "quality", "quality", "balanced", "performance", "ultra", "dlaa" };
-                env["AKIBOT_DLSS_QUALITY"] = dlssModes[Math.Max(0, Math.Min(settings.Upscale, dlssModes.Length - 1))];
+                // Upscale: 1 DLSS, 5 DLAA. DLSS runs at the game's own resolutions, so the old presets
+                // (2 Balanced, 3 Performance, 4 Ultra Performance) gained nothing: they run as DLSS.
+                env["AKIBOT_DLSS_QUALITY"] = settings.Upscale == 5 ? "dlaa" : "quality";
             }
 
             // Frame generation plan (AstroBotLauncher.FrameGenPlan): the game is never capped below 30.
