@@ -14,6 +14,11 @@ param(
     [string]$AnyPS5Build =(Join-Path $PSScriptRoot '..\..\..\anyps5-build'),
     [string]$WinLibs = (Join-Path $PSScriptRoot '..\..\..\outils\winlibs\mingw64\bin'),
     [string]$Ffx = (Join-Path $PSScriptRoot '..\..\..\sdk\fidelityfx-1.1.4'),
+    # Liste de shaders 01.007 (décalages et hash seulement, aucun code du jeu) : préparation des shaders avant de jouer.
+    [string]$PipelineList = (Join-Path $PSScriptRoot '..\..\..\Mesures\liste-0107\PPSA21567.kyplst'),
+    [string]$PipelineListTool = (Join-Path $PSScriptRoot '..\..\..\kyty-build-int22\kyty_pipeline_list.exe'),
+    # Le jeu converti (app0 d'une installation) : « verify » cherche le code du jeu dans la liste pour prouver qu'il n'y est pas.
+    [string]$GameForVerify = 'C:\AkiBot\Build\RunHybrid\app0',
     [string]$Out = (Join-Path $PSScriptRoot '..\..\..\Release')
 )
 $ErrorActionPreference = 'Stop'
@@ -71,6 +76,14 @@ python -I (Join-Path $PSScriptRoot '..\hybrid\make_shims.py') $KytyNids $libs
 if ($LASTEXITCODE -ne 0) { throw 'make_shims.py a échoué' }
 Copy-Item (Join-Path $Ffx 'PrebuiltSignedDLL\amd_fidelityfx_vk.dll') $run
 Copy-Item (Join-Path $Ffx 'sdk\LICENSE.txt') (Join-Path $stage 'licenses\fidelityfx.license.txt')
+if ($PipelineList -and (Test-Path $PipelineList)) {
+    # « verify » refuse une liste qui contiendrait du code du jeu.
+    & $PipelineListTool verify --game $GameForVerify $PipelineList
+    if ($LASTEXITCODE -ne 0) { throw "la liste de shaders contient du code du jeu ou est invalide : $PipelineList" }
+    $lists = Join-Path $run 'PipelineLists'
+    New-Item -ItemType Directory -Force $lists | Out-Null
+    Copy-Item $PipelineList (Join-Path $lists 'PPSA21567.kyplst')
+}
 
 @"
 AkiBot runtime $Version

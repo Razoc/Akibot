@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Fri, 6 Nov 2026 22:39:47 +0000
-Subject: [PATCH 09/42] chore(hybrid): snapshot Claude milestone 4 build work
+Subject: [PATCH 09/49] chore(hybrid): snapshot Claude milestone 4 build work
 
 ---
  src/hybrid/kytyGpuBridge.cpp   | 31 +++++++++++++++++++++++++++++--

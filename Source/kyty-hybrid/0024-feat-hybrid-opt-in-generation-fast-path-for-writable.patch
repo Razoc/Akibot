@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Thu, 12 Nov 2026 19:26:21 +0000
-Subject: [PATCH 24/42] feat(hybrid): opt-in generation fast path for writable
+Subject: [PATCH 24/49] feat(hybrid): opt-in generation fast path for writable
  buffer bindings
 
 AKIBOT_COMMIT_EPOCH_FASTPATH=1|verify|exit (default 0). A writable

@@ -27,6 +27,8 @@ namespace AkiBot.App.Services
         // Guest address of the game's frame-rate block (f64 60.0, f32 1/60, u64 16666 microseconds), found by
         // those values in AstroBot.exe; 0 = not found. Passed to the engine as AKIBOT_GAME_STEP_ADDR.
         public ulong GameStepAddress { get; set; }
+        // The community 01.007 patch was tried on an install set up before it existed (GameSetup.AddCommunityLighting).
+        public bool CommunityPatchTried { get; set; }
         public DateTime SetupAt { get; set; }
 
         public const string FileName = "akibot-game.json";
@@ -82,6 +84,56 @@ namespace AkiBot.App.Services
              "554889e5488d3ded6fbb07488d0dc47fc2074c8d052299e407be1f000000ba0100000031c0e8660eb6ff85c07402cd42488d3d3c54d20731c0e88235fbffcd4131c05dc3",
              "554889e5eb2a3ded6fbb07488d0dc47fc2074c8d052299e407be1f000000ba0100000031c0e8660eb6ff85c07402cd42488d3d3c54d20731c0e88235fbff909031c05dc3"),
         };
+
+        // The same assert function in any game version (01.007.000 has other rip-relative displacements): "??" bytes
+        // are free. It must occur once; the patch jumps over the message call (+4) and the int 0x42 that stops the
+        // game, and turns the final int 0x41 (+62) into nops, so the caller gets 0 (issue #25, 01.007 crash at +0x2e).
+        private const string SoftAssertAnyVersion =
+            "554889e5488d3d????????488d0d????????4c8d05????????be1f000000ba0100000031c0e8????????85c07402cd42488d3d????????31c0e8????????cd4131c05dc3";
+
+        private static bool ApplySoftAssert(byte[] data, Action<string> log)
+        {
+            if (ApplyAll(data, SoftAssertPatches, log))
+                return true;
+            int at = FindUniqueMasked(data, SoftAssertAnyVersion, out int count);
+            if (at < 0)
+            {
+                log($"patch 'soft command-buffer assert (any version)': found {count} times, skipped");
+                return false;
+            }
+            data[at + 4] = 0xEB;
+            data[at + 5] = 0x2A;
+            data[at + 62] = 0x90;
+            data[at + 63] = 0x90;
+            log($"patch 'soft command-buffer assert (any version)' at 0x{at:x}");
+            return true;
+        }
+
+        private static int FindUniqueMasked(byte[] data, string pattern, out int count)
+        {
+            int length = pattern.Length / 2;
+            var bytes = new byte[length];
+            var fixedByte = new bool[length];
+            for (int i = 0; i < length; i++)
+            {
+                var pair = pattern.Substring(i * 2, 2);
+                fixedByte[i] = pair != "??";
+                if (fixedByte[i]) bytes[i] = Convert.ToByte(pair, 16);
+            }
+            count = 0;
+            int found = -1;
+            for (int i = 0; i <= data.Length - length; i++)
+            {
+                if (data[i] != bytes[0]) continue;
+                int j = 1;
+                while (j < length && (!fixedByte[j] || data[i + j] == bytes[j])) j++;
+                if (j < length) continue;
+                count++;
+                found = i;
+                if (count > 1) return -1;
+            }
+            return count == 1 ? found : -1;
+        }
 
         // Astro Bot's internal render aspect constant: 16:9 -> 2.3888889 (3440x1440 / 21:9-class displays).
         // The patch is kept as a separate executable variant so 16:9 users retain the original framing.
@@ -160,19 +212,31 @@ namespace AkiBot.App.Services
                 WriteVariant(ultrawide, "AstroBot-Ultrawide");
             var nonRt = (byte[])baseBytes.Clone();
             features.FasterLighting = ApplyAll(nonRt, FasterLightingPatches, Log);
-            if (features.FasterLighting)
+            if (!features.FasterLighting && version == CommunityPatch0107.Version)
+            {
+                // 01.007.000: the community patch gives the non-RT renderer (and the frame-rate fixes) instead.
+                var community = CommunityPatch0107.Apply(baseBytes, Log);
+                if (community != null)
+                {
+                    WriteVariant(community, "AstroBot-NonRT");
+                    features.FasterLighting = true;
+                    if (ApplySoftAssert(community, Log))
+                        WriteVariant(community, "AstroBot-NonRT-SoftAssert");
+                }
+            }
+            else if (features.FasterLighting)
             {
                 WriteVariant(nonRt, "AstroBot-NonRT");
                 var nonRtUltrawide = (byte[])nonRt.Clone();
                 if (features.Ultrawide && ApplyAllOccurrences(nonRtUltrawide, UltrawidePatches, Log))
                     WriteVariant(nonRtUltrawide, "AstroBot-NonRT-Ultrawide");
                 var soft = (byte[])nonRt.Clone();
-                if (ApplyAll(soft, SoftAssertPatches, Log))
+                if (ApplySoftAssert(soft, Log))
                     WriteVariant(soft, "AstroBot-NonRT-SoftAssert");
                 if (features.Ultrawide)
                 {
                     var softUltrawide = (byte[])nonRtUltrawide.Clone();
-                    if (ApplyAll(softUltrawide, SoftAssertPatches, Log))
+                    if (ApplySoftAssert(softUltrawide, Log))
                         WriteVariant(softUltrawide, "AstroBot-NonRT-Ultrawide-SoftAssert");
                 }
             }
@@ -188,6 +252,40 @@ namespace AkiBot.App.Services
                 InstallationManager.CreateManifest(_root, dump, version, titleId, features.SetupAt));
             Report(100, Loc.T("Done."));
             return features;
+        }
+
+        // Installs set up before the community 01.007 patch existed: make AstroBot-NonRT.exe from the AstroBot.exe
+        // already there, once (the next launch finds the file, or akibot-game.json says it was tried).
+        public static void AddCommunityLighting(string runHybrid)
+        {
+            try
+            {
+                var features = GameFeatures.Load(runHybrid);
+                var exe = Path.Combine(runHybrid, "AstroBot.exe");
+                if (features == null || features.FasterLighting || features.CommunityPatchTried ||
+                    features.Version != CommunityPatch0107.Version || !File.Exists(exe))
+                    return;
+                var logPath = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(runHybrid)!)!, "Logs", "setup.log");
+                void Log(string line) => File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {line}\r\n");
+                features.CommunityPatchTried = true;
+                if (new FileInfo(exe).Length == CommunityPatch0107.BaseLength)
+                {
+                    var community = CommunityPatch0107.Apply(File.ReadAllBytes(exe), Log);
+                    if (community != null)
+                    {
+                        var setup = new GameSetup(Path.GetDirectoryName(Path.GetDirectoryName(runHybrid)!)!);
+                        setup.WriteVariant(community, "AstroBot-NonRT");
+                        features.FasterLighting = true;
+                        if (ApplySoftAssert(community, Log))
+                            setup.WriteVariant(community, "AstroBot-NonRT-SoftAssert");
+                    }
+                }
+                else
+                    Log($"community 01.007 patch: AstroBot.exe is not {CommunityPatch0107.BaseLength} bytes, skipped");
+                File.WriteAllText(Path.Combine(runHybrid, GameFeatures.FileName),
+                    JsonSerializer.Serialize(features, new JsonSerializerOptions { WriteIndented = true }));
+            }
+            catch { }
         }
 
         private static ulong FindGameStepBlock(byte[] exe, Action<string> log)

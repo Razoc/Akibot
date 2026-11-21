@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Thu, 12 Nov 2026 02:32:45 +0000
-Subject: [PATCH 22/42] feat(hybrid): opt-in guest-load fault context for read
+Subject: [PATCH 22/49] feat(hybrid): opt-in guest-load fault context for read
  faults in the game image (AKIBOT_GUEST_LOAD_FAULTS)
 
 The bridge's fault handler never published the native context, so KYTY_READ_FAULT_PUBLISHED could not engage in AstroBot.exe. Also records the faulting instruction for KYTY_FAULT_MAP.

@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Sun, 8 Nov 2026 19:01:19 +0000
-Subject: [PATCH 17/42] feat: add opt-in AkiBot frame-rate settings
+Subject: [PATCH 17/49] feat: add opt-in AkiBot frame-rate settings
 
 ---
  .../presentation/performanceOverlay.cpp       |  5 ++

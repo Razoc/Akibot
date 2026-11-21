@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Fri, 6 Nov 2026 20:20:56 +0000
-Subject: [PATCH 04/42] feat(hybrid): start Kyty's renderer inside the host
+Subject: [PATCH 04/49] feat(hybrid): start Kyty's renderer inside the host
  process (milestone 2a)
 
 start_graphics runs Kyty's subsystems in kyty_emulator's order (Config, Log,

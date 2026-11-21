@@ -1,0 +1,122 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Razoc <razoc@users.noreply.github.com>
+Date: Thu, 19 Nov 2026 20:22:27 +0100
+Subject: [PATCH 43/49] =?UTF-8?q?fix(akibot):=20DLSS,=20une=20feature=20pa?=
+ =?UTF-8?q?r=20taille=20(3=20emplacements)=20au=20lieu=20de=20la=20reconst?=
+ =?UTF-8?q?ruire=20=C3=A0=20chaque=20changement?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/graphics/host_gpu/renderer/dlss.cpp | 67 ++++++++++++++++++++-----
+ 1 file changed, 54 insertions(+), 13 deletions(-)
+
+diff --git a/src/graphics/host_gpu/renderer/dlss.cpp b/src/graphics/host_gpu/renderer/dlss.cpp
+index b09d4d46..afb26f0e 100644
+--- a/src/graphics/host_gpu/renderer/dlss.cpp
++++ b/src/graphics/host_gpu/renderer/dlss.cpp
+@@ -238,7 +238,19 @@ struct State {
+ 	bool     ready      = false;
+ #if KYTY_NGX
+ 	NVSDK_NGX_Parameter* params = nullptr;
+-	NVSDK_NGX_Handle*    feature = nullptr;
++	NVSDK_NGX_Handle*    feature = nullptr; // the slot this evaluation uses
++	// AkiBot: the game alternates between a few input/output sizes (gameplay to 4K, the pause menu at
++	// the render size, dynamic resolution). One feature per size, kept, instead of rebuilding the only
++	// one on every change (85 to 178 rebuilds in two minutes in the hub). Least recently used goes first.
++	struct FeatureSlot {
++		NVSDK_NGX_Handle* handle = nullptr;
++		uint32_t          in_w = 0, in_h = 0, out_w = 0, out_h = 0;
++		uint32_t          last_frame = 0;
++		uint64_t          used       = 0;
++	};
++	std::array<FeatureSlot, 3> slots {};
++	uint64_t                   slot_clock  = 0;
++	int                        active_slot = -1;
+ #endif
+ 	uint32_t feature_in_w = 0, feature_in_h = 0, feature_out_w = 0, feature_out_h = 0;
+ 	uint32_t last_frame = 0;
+@@ -772,12 +784,37 @@ bool RenderExecutor::TryDlssUpscale(CommandBuffer& buffer, PreparedBindings& pix
+ 	// Native recording: outside rendering, the recorder drained (CommandBuffer::Handle).
+ 	buffer.EndRendering();
+ 	const auto cmd = buffer.Handle();
+-	if (s.feature == nullptr || s.feature_in_w != in_w || s.feature_in_h != in_h ||
+-	    s.feature_out_w != out_w || s.feature_out_h != out_h) {
+-		if (s.feature != nullptr) {
+-			NVSDK_NGX_VULKAN_ReleaseFeature(s.feature);
+-			s.feature = nullptr;
++	// The slot for these sizes, or the free / least recently used one to (re)build.
++	int  slot_index = -1;
++	for (int i = 0; i < static_cast<int>(s.slots.size()); i++) {
++		const auto& slot = s.slots[i];
++		if (slot.handle != nullptr && slot.in_w == in_w && slot.in_h == in_h && slot.out_w == out_w &&
++		    slot.out_h == out_h) {
++			slot_index = i;
++			break;
++		}
++	}
++	if (slot_index < 0) {
++		slot_index = 0;
++		for (int i = 0; i < static_cast<int>(s.slots.size()); i++) {
++			if (s.slots[i].handle == nullptr) {
++				slot_index = i;
++				break;
++			}
++			if (s.slots[i].used < s.slots[slot_index].used) {
++				slot_index = i;
++			}
++		}
++	}
++	auto& slot  = s.slots[slot_index];
++	s.feature   = slot.handle;
++	if (slot.handle == nullptr || slot.in_w != in_w || slot.in_h != in_h || slot.out_w != out_w ||
++	    slot.out_h != out_h) {
++		if (slot.handle != nullptr) {
++			NVSDK_NGX_VULKAN_ReleaseFeature(slot.handle);
++			slot = {};
+ 		}
++		s.feature = nullptr;
+ 		NVSDK_NGX_DLSS_Create_Params create {};
+ 		create.Feature.InWidth        = in_w;
+ 		create.Feature.InHeight       = in_h;
+@@ -805,16 +842,17 @@ bool RenderExecutor::TryDlssUpscale(CommandBuffer& buffer, PreparedBindings& pix
+ 			s.feature = nullptr;
+ 			return Fail(s, Fallback::CreateFailed);
+ 		}
+-		s.feature_in_w  = in_w;
+-		s.feature_in_h  = in_h;
+-		s.feature_out_w = out_w;
+-		s.feature_out_h = out_h;
++		slot.handle = s.feature;
++		slot.in_w = in_w, slot.in_h = in_h, slot.out_w = out_w, slot.out_h = out_h;
+ 		std::printf("DLSS: Super Resolution feature created, %ux%u -> %ux%u, preset family %d, "
+-		            "depth inverted %d, jitter sign %+.0f\n",
++		            "depth inverted %d, jitter sign %+.0f (slot %d)\n",
+ 		            in_w, in_h, out_w, out_h, s.quality, s.depth_inverted ? 1 : 0,
+-		            static_cast<double>(s.jitter_sign));
++		            static_cast<double>(s.jitter_sign), slot_index);
+ 		std::fflush(stdout);
+ 	}
++	slot.used     = ++s.slot_clock;
++	s.active_slot = slot_index;
++	s.feature_in_w = in_w, s.feature_in_h = in_h, s.feature_out_w = out_w, s.feature_out_h = out_h;
+ 
+ 	// Layouts as Streamline's DLSS plugin uses them: inputs sampled, output storage.
+ 	mv.Transit(vk::ImageLayout::eShaderReadOnlyOptimal, vk::AccessFlagBits2::eShaderSampledRead, {}, cmd);
+@@ -868,7 +906,10 @@ bool RenderExecutor::TryDlssUpscale(CommandBuffer& buffer, PreparedBindings& pix
+ 	eval.InMVScaleX        = -static_cast<float>(in_w);
+ 	eval.InMVScaleY        = -static_cast<float>(in_h);
+ 	eval.InRenderSubrectDimensions = {in_w, in_h};
+-	eval.InReset = (s.last_frame != 0 && frame != s.last_frame + 1) ? 1 : 0;
++	// Each slot keeps its own history: start it again when it was not used on the previous frame (its
++	// history is from an older moment). Two passes alternating every frame keep theirs.
++	eval.InReset = (slot.last_frame != 0 && frame != slot.last_frame + 1) ? 1 : 0;
++	slot.last_frame  = frame;
+ 	s.last_frame     = frame;
+ 	s.last_jitter[0] = eval.InJitterOffsetX;
+ 	s.last_jitter[1] = eval.InJitterOffsetY;
+-- 
+2.56.0.windows.4
+

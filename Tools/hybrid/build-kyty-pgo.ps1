@@ -34,6 +34,8 @@ $KytyOut = [IO.Path]::GetFullPath($KytyOut)
 $KytyDll = [IO.Path]::GetFullPath($KytyDll)
 $llvm = $LlvmDir -replace '\\', '/'
 $pgoProfile = (Join-Path $KytySrc 'tools\pgo\u59-int21-1.profdata') -replace '\\', '/'
+# Surcharge facultative du profil PGO (ex. Kyty int22 : tools\pgo\u59-int22-1.profdata)
+if ($env:KYTY_PGO_PROFILE) { $pgoProfile = $env:KYTY_PGO_PROFILE -replace '\\', '/' }
 
 if (-not (Test-Path (Join-Path $KytySrc 'CMakeLists.txt'))) { throw "Sources Kyty introuvables : $KytySrc" }
 if (-not (Test-Path (Join-Path $LlvmDir 'clang-cl.exe'))) { throw "clang-cl introuvable dans $LlvmDir" }

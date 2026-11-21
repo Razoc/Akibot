@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Fri, 6 Nov 2026 20:26:48 +0000
-Subject: [PATCH 05/42] feat(hybrid): lazy start, direct-memory exports and GPU
+Subject: [PATCH 05/49] feat(hybrid): lazy start, direct-memory exports and GPU
  event proxy (milestone 2b)
 
 - Unbound exports now trap into a resolver that saves every System V

@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Thu, 12 Nov 2026 21:20:42 +0000
-Subject: [PATCH 28/42] feat(hybrid): opt-in DLSS Super Resolution for the
+Subject: [PATCH 28/49] feat(hybrid): opt-in DLSS Super Resolution for the
  game's temporal upscale (blocked)
 
 AKIBOT_DLSS=1 with a KYTY_NGX_SDK_DIR build replaces Astro Bot's

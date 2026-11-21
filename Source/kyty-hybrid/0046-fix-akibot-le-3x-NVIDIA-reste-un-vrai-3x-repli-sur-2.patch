@@ -1,0 +1,87 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Razoc <razoc@users.noreply.github.com>
+Date: Thu, 19 Nov 2026 23:14:58 +0100
+Subject: [PATCH 46/49] =?UTF-8?q?fix(akibot):=20le=203x=20NVIDIA=20reste?=
+ =?UTF-8?q?=20un=20vrai=203x=20;=20repli=20sur=202x/4x=20seulement=20s'il?=
+ =?UTF-8?q?=20ne=20g=C3=A9n=C3=A8re=20rien=20(remplacement=20DLSS=20de=20l?=
+ =?UTF-8?q?a=20NVIDIA=20App)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/graphics/host_gpu/renderer/frameGen.cpp | 35 ++++++++++++++++-----
+ 1 file changed, 27 insertions(+), 8 deletions(-)
+
+diff --git a/src/graphics/host_gpu/renderer/frameGen.cpp b/src/graphics/host_gpu/renderer/frameGen.cpp
+index 6dc8ac0c..3e9669e1 100644
+--- a/src/graphics/host_gpu/renderer/frameGen.cpp
++++ b/src/graphics/host_gpu/renderer/frameGen.cpp
+@@ -171,6 +171,9 @@ struct State {
+ 	uint32_t              lower_windows = 0;
+ 	int64_t               no_down_until = 0; // AkiBot: no 4x -> 2x retry before this time
+ 	bool                  down_trial = false;  // AkiBot: 2x is being retried after 4x
++	bool                  x3_broken = false;   // AkiBot: 3x was seen showing only the game's frames
++	uint32_t              x3_presents = 0;
++	uint64_t              x3_shown = 0;
+ 	double                game_fps = 0.0;
+ 	uint32_t              switches = 0;
+ };
+@@ -206,11 +209,12 @@ void Marker(sl::PCLMarker marker, uint64_t frame) {
+ 	}
+ }
+ 
+-// AkiBot: 2 generated frames (3x) never generate here: Streamline 2.14.16 reports "missing common
+-// constants" for every frame and shows the game's frames only, while 1 (2x) and 3 (4x) work with the
+-// same tags, constants and frame tokens (traced on 2026-11-19). 3x becomes 2x or 4x.
++// AkiBot: with the NVIDIA App's DLSS override on (Frame Generation preset B), the driver's
++// "override" Streamline plugins load instead of ours and 3x (2 generated frames) shows the game's
++// frames only ("missing common constants"), while 2x and 4x work; with the override off 3x works
++// (traced on 2026-11-19). PresentEnd notices it after 120 presents; 3x then becomes 2x or 4x.
+ uint32_t UsableFrames(uint32_t wanted, double game_fps, uint32_t target_fps, uint32_t max_frames) {
+-	if (wanted != 2) {
++	if (wanted != 2 || !Get().x3_broken) {
+ 		return wanted;
+ 	}
+ 	// Auto: 2x when it reaches 75% of the target (lower latency; 4x also lets Reflex cap the screen
+@@ -331,10 +335,6 @@ PFN_vkGetInstanceProcAddr LoaderBeforeInstance() {
+ 	if (const char* value = std::getenv("AKIBOT_DLSSG_FRAMES"); value != nullptr) {
+ 		s.frames_generated = std::max(1, std::atoi(value));
+ 	}
+-	if (s.frames_generated == 2) {
+-		std::printf("DLSS-G: 3x does not generate with this Streamline; using 4x\n");
+-		s.frames_generated = 3;
+-	}
+ 	if (const char* value = std::getenv("AKIBOT_DLSSG_TARGET"); value != nullptr) {
+ 		s.target_fps = static_cast<uint32_t>(std::clamp(std::atoi(value), 0, 400));
+ 	}
+@@ -493,6 +493,25 @@ void PresentEnd(uint64_t frame) {
+ 		if (s.api.dlssg_get_state(viewport, state, nullptr) == sl::Result::eOk) {
+ 			s.presents++;
+ 			s.presented_frames += state.numFramesActuallyPresented;
++			// Judged in play only: before the game tags its first frames (loading, menus) nothing is
++			// generated in any mode.
++			if (s.frames_generated == 2 && !s.x3_broken && s.tags >= 240) {
++				s.x3_shown += state.numFramesActuallyPresented;
++				if (++s.x3_presents >= 120) {
++					if (s.x3_shown < 120u * 2u) {
++						s.x3_broken = true;
++						std::printf("DLSS-G: 3x shows only the game's frames here (NVIDIA App DLSS override?); "
++						            "using %s\n", s.target_fps != 0 ? "2x or 4x" : "4x");
++						std::fflush(stdout);
++						s.frames_generated = s.target_fps != 0
++						                         ? UsableFrames(2, s.game_fps, s.target_fps, s.max_frames)
++						                         : std::min<uint32_t>(3, std::max<uint32_t>(s.max_frames, 1));
++						ApplyOptions();
++					}
++					s.x3_presents = 0;
++					s.x3_shown    = 0;
++				}
++			}
+ 			const double shown = std::max(1u, state.numFramesActuallyPresented);
+ 			const double old   = s.shown_ratio.load(std::memory_order_relaxed);
+ 			s.shown_ratio.store(old + (shown - old) * 0.1, std::memory_order_relaxed);
+-- 
+2.56.0.windows.4
+

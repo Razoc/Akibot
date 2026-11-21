@@ -1,0 +1,64 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Razoc <razoc@users.noreply.github.com>
+Date: Thu, 19 Nov 2026 20:27:20 +0100
+Subject: [PATCH 44/49] =?UTF-8?q?feat(akibot):=20KYTY=5FGPU=5FDISPLAY=3D<n?=
+ =?UTF-8?q?>=20ouvre=20le=20jeu=20sur=20le=20n-i=C3=A8me=20=C3=A9cran=20(p?=
+ =?UTF-8?q?lein=20=C3=A9cran=20compris)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/graphics/presentation/window/window.cpp | 29 ++++++++++++++++++++-
+ 1 file changed, 28 insertions(+), 1 deletion(-)
+
+diff --git a/src/graphics/presentation/window/window.cpp b/src/graphics/presentation/window/window.cpp
+index 1c0dac7f..6d7fe711 100644
+--- a/src/graphics/presentation/window/window.cpp
++++ b/src/graphics/presentation/window/window.cpp
+@@ -896,13 +896,40 @@ static void WindowCreate(WindowContext& context) {
+ 		window_flags |= static_cast<uint32_t>(SDL_WINDOW_BORDERLESS);
+ 	}
+ #endif
++	// AkiBot: KYTY_GPU_DISPLAY=<n> opens the game on the n-th screen (1 = the first SDL reports). The window
++	// is made windowed there first, then fullscreen, so fullscreen lands on that screen too.
++	SDL_DisplayID target_display = 0;
++	if (const char* display = std::getenv("KYTY_GPU_DISPLAY"); display != nullptr && display[0] != '\0') {
++		int        count    = 0;
++		const auto displays = SDL_GetDisplays(&count);
++		const int  wanted   = std::atoi(display);
++		if (displays != nullptr && wanted >= 1 && wanted <= count) {
++			target_display = displays[wanted - 1];
++		}
++		std::printf("Window: KYTY_GPU_DISPLAY=%s, %d screen(s), %s\n", display, count,
++		            target_display != 0 ? "using it" : "not found, the main screen is used");
++		std::fflush(stdout);
++		SDL_free(displays);
++	}
++	const bool fullscreen_after = target_display != 0 && (window_flags & static_cast<uint32_t>(SDL_WINDOW_FULLSCREEN)) != 0;
++	if (fullscreen_after) {
++		window_flags &= ~static_cast<uint32_t>(SDL_WINDOW_FULLSCREEN);
++	}
+ 	context.window = SDL_CreateWindow(KYTY_SDL_WINDOW_CAPTION, width, height, window_flags);
+ 
+ 	if (context.window == nullptr) {
+ 		EXIT("%s\n", SDL_GetError());
+ 	}
+ 
+-	SDL_SetWindowPosition(context.window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
++	if (target_display != 0) {
++		SDL_SetWindowPosition(context.window, SDL_WINDOWPOS_CENTERED_DISPLAY(target_display),
++		                      SDL_WINDOWPOS_CENTERED_DISPLAY(target_display));
++		if (fullscreen_after) {
++			SDL_SetWindowFullscreen(context.window, true);
++		}
++	} else {
++		SDL_SetWindowPosition(context.window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
++	}
+ 	HostInputInit(context.window);
+ 	InitializeSystemOverlayInput(context.window);
+ 	context.UpdateIcon();
+-- 
+2.56.0.windows.4
+

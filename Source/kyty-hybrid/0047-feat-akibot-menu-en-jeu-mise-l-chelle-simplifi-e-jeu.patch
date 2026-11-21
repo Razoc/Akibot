@@ -1,0 +1,55 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Razoc <razoc@users.noreply.github.com>
+Date: Thu, 19 Nov 2026 23:34:24 +0100
+Subject: [PATCH 47/49] =?UTF-8?q?feat(akibot):=20menu=20en=20jeu,=20mise?=
+ =?UTF-8?q?=20=C3=A0=20l'=C3=A9chelle=20simplifi=C3=A9e=20(jeu,=20DLSS,=20?=
+ =?UTF-8?q?DLAA,=20FSR)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/graphics/presentation/akibotMenu.cpp | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/src/graphics/presentation/akibotMenu.cpp b/src/graphics/presentation/akibotMenu.cpp
+index e3e43b17..2b43226a 100644
+--- a/src/graphics/presentation/akibotMenu.cpp
++++ b/src/graphics/presentation/akibotMenu.cpp
+@@ -77,9 +77,9 @@ const std::vector<Option>& Options() {
+ 	     {{"OFF - éclairage rapide", "OFF - faster lighting"}, {"ON - ray tracing", "ON - ray tracing"}},
+ 	     Live::No, false, 0},
+ 	    {Tab::Graphics, "upscale", Kind::Choice, {"Mise à l'échelle", "Upscaling"},
+-	     {{"Celui du jeu", "Game's own"}, {"Qualité", "Quality"}, {"Équilibré", "Balanced"},
+-	      {"Performance", "Performance"}, {"Ultra Performance", "Ultra Performance"}, {"DLAA", "DLAA"},
+-	      {"AMD FSR 3.1", "AMD FSR 3.1"}},
++	     // AkiBot: DLSS runs at the game's own resolutions, so its quality presets changed nothing:
++	     // DLSS and DLAA only (JSON values 1 and 5; the old presets 2-4 show as DLSS).
++	     {{"Celui du jeu", "Game's own"}, {"DLSS", "DLSS"}, {"DLAA", "DLAA"}, {"AMD FSR 3.1", "AMD FSR 3.1"}},
+ 	     Live::No, false, 0},
+ 	    {Tab::Graphics, "fgmode", Kind::Choice, {"Frame Generation", "Frame Generation"},
+ 	     {{"Désactivée", "Off"}, {"Auto (conseillé)", "Auto (recommended)"}, {"x2", "2x"}, {"x3", "3x"}, {"x4", "4x"},
+@@ -186,6 +186,9 @@ int ReadIndex(const Option& option, const Json& json) {
+ 		return option.default_index;
+ 	}
+ 	int value = it->get<int>();
++	if (std::strcmp(option.key, "upscale") == 0) {
++		return value >= 1 && value <= 4 ? 1 : value == 5 ? 2 : value == 6 ? 3 : 0;
++	}
+ 	if (std::strcmp(option.key, "language") == 0) {
+ 		value = value < 0 || value > 30 ? 0 : value + 1;
+ 	} else if (std::strcmp(option.key, "cpPriority") == 0) {
+@@ -210,6 +213,9 @@ void WriteIndex(const Option& option, int index, Json& json) {
+ 		json[option.key] = index != 0;
+ 	} else if (std::strcmp(option.key, "priority") == 0) {
+ 		json[option.key] = PRIORITIES[index];
++	} else if (std::strcmp(option.key, "upscale") == 0) {
++		static constexpr int kUpscaleValues[] = {0, 1, 5, 6};
++		json[option.key] = kUpscaleValues[std::clamp(index, 0, 3)];
+ 	} else if (std::strcmp(option.key, "language") == 0) {
+ 		json[option.key] = index == 0 ? -1 : index - 1;
+ 	} else if (std::strcmp(option.key, "cpPriority") == 0) {
+-- 
+2.56.0.windows.4
+

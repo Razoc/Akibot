@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Sat, 7 Nov 2026 01:01:32 +0000
-Subject: [PATCH 10/42] hybrid: ABI 1.3, a closed window asks the host to exit
+Subject: [PATCH 10/49] hybrid: ABI 1.3, a closed window asks the host to exit
  instead of tearing the renderer down
 
 Closing Kyty's window ended WindowRun and destroyed the subsystems while the game kept

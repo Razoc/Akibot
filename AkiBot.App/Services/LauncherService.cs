@@ -29,6 +29,8 @@ namespace AkiBot.App.Services
             {
                 throw new FileNotFoundException("AstroBot.exe not found in RunHybrid", runHybrid);
             }
+            // 01.007 installs set up before the community patch: build its variants before choosing the program.
+            GameSetup.AddCommunityLighting(runHybrid);
 
             // First Play after a setup (wizard, RecompLauncher's Easy Setup): settings for this PC, once.
             if (settings.ApplyBestOnStart)
@@ -43,7 +45,74 @@ namespace AkiBot.App.Services
             settings.LastLaunched = DateTime.Now;
             _settingsManager.Save(settings);
 
-            return await StartGameAsync(BuildEnvironmentVariables(settings, hardware), Array.Empty<string>(), hardware);
+            var variables = BuildEnvironmentVariables(settings, hardware);
+            // First Play (or a new renderer, list or graphics driver): build the shaders before the game, with a
+            // progress window. Closing that window starts nothing.
+            if (ShaderPrep.Needed(runHybrid) && !Views.ShaderPrepWindow.PrepareBeforePlay(this, variables))
+                return 0;
+            return await StartGameAsync(variables, Array.Empty<string>(), hardware);
+        }
+
+        // The game with KYTY_PIPELINE_LIST_PREPARE=1: Kyty builds the pipeline list's shaders and pipelines, saves its
+        // caches and ends the process. Output in Logs\shader-prep.log (not in the session files: the end of the process
+        // is not a game session). Success is the "done" line: with int21 the forced end can abort() in the game's libc
+        // afterwards (0xC0000409), with everything already saved (test 2026-11-22).
+        public async Task<ShaderPrep.Result> PrepareShadersAsync(Dictionary<string, string> variables, IProgress<string>? status,
+            System.Threading.CancellationToken cancel)
+        {
+            var runHybrid = Path.Combine(_rootDirectory, "Build", "RunHybrid");
+            var psi = new ProcessStartInfo
+            {
+                WorkingDirectory = runHybrid,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            var env = psi.EnvironmentVariables;
+            foreach (var kvp in variables)
+                env[kvp.Key] = kvp.Value;
+            RuntimeDefaults.Apply(env, runHybrid);
+            env["KYTY_PIPELINE_LIST_PREPARE"] = "1";
+            env["KYTY_PIPELINE_LIST"] = "1";
+            env["KYTY_PIPELINE_LIST_CROSS"] = "1";
+            // A small window that does not take the screen: the game itself never starts (the pipelines do not
+            // depend on the window size).
+            env["KYTY_GPU_FULLSCREEN"] = "0";
+            env["KYTY_GPU_WIDTH"] = "640";
+            env["KYTY_GPU_HEIGHT"] = "360";
+            env["KYTY_FRAME_TIMES_LOG"] = "";
+            psi.FileName = Path.Combine(runHybrid, env["AKIBOT_EXE"]);
+
+            var logs = Path.Combine(_rootDirectory, "Logs");
+            Directory.CreateDirectory(logs);
+            bool done = false, noList = false;
+            using var log = new StreamWriter(Path.Combine(logs, "shader-prep.log"), false);
+            log.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {psi.FileName} (KYTY_PIPELINE_LIST_PREPARE=1)");
+            using var process = new Process { StartInfo = psi };
+            void Line(string? text, bool error)
+            {
+                if (text == null || SessionReport.IsFileOpenTrace(text)) return;
+                lock (log) log.WriteLine(error ? "err  " + text : text);
+                if (ShaderPrep.IsDone(text)) done = true;
+                if (ShaderPrep.IsNoList(text)) noList = true;
+                var step = ShaderPrep.Step(text);
+                if (step != null) status?.Report(step);
+            }
+            process.OutputDataReceived += (s, e) => Line(e.Data, false);
+            process.ErrorDataReceived += (s, e) => Line(e.Data, true);
+            process.Start();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+            using (cancel.Register(() => { try { if (!process.HasExited) process.Kill(); } catch { } }))
+                await Task.Run(() => process.WaitForExit());
+            lock (log) log.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] exit {process.ExitCode}, done {done}, no list {noList}");
+
+            if (cancel.IsCancellationRequested && !done) return ShaderPrep.Result.Cancelled;
+            if (done) { ShaderPrep.MarkDone(runHybrid); return ShaderPrep.Result.Done; }
+            // A list this game cannot use: nothing to prepare, do not try at every Play.
+            if (noList || process.ExitCode == 2) { ShaderPrep.MarkDone(runHybrid); return ShaderPrep.Result.NoList; }
+            return ShaderPrep.Result.Failed;
         }
 
         // AkiBot.exe --run [game arguments]: the game with the runtime defaults only, the caller's environment
@@ -203,6 +272,7 @@ namespace AkiBot.App.Services
             // Lighting/renderer selection
             // What this game build supports (GameSetup); no file = the original 01.019.000 install.
             var runHybrid = Path.Combine(_rootDirectory, "Build", "RunHybrid");
+            GameSetup.AddCommunityLighting(runHybrid);
             var features = GameFeatures.Load(runHybrid);
             // Prefer the soft-assert variant so a command-buffer overflow follows the
             // engine's failure path instead of crashing in command_buffer_writer (issue #25).

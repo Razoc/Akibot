@@ -13,7 +13,17 @@ travaillant sur la couche de traduction (CPU et GPU), jamais sur le jeu lui-mêm
 
 ## État actuel
 
-Version **0.3.4** : configuration facile de RecompLauncher de retour (choix du dossier du dump, conversion
+Version **0.3.5** : la **v01.007.000** a enfin son **éclairage rapide**. Le patch communautaire de
+[KytyPS5-Modules](https://github.com/KytyPS5/KytyPS5-Modules) (rendu non-RT, minuteries du jeu découplées des FPS,
+limiteur CPU du jeu retiré, correctifs de plantage Havok) est appliqué par AkiBot à ta copie du jeu, avec le
+**soft-assert du command buffer** (le plantage « too many objects/batches in this scene » devient un simple message).
+Sky Garden : **58,8 → 61 FPS, 1 % bas 44 → 48**. Nouveau **runtime 0.3.2** avec la **préparation des shaders avant
+de jouer** : au premier Jouer (et après une mise à jour du runtime ou du pilote graphique), une fenêtre « Préparation
+des shaders » construit les 789 shaders et 1 254 pipelines de notre liste 01.007, puis le jeu démarre tout seul. Plus de
+centaines de draws sautés ni de saccades à la découverte des niveaux (1 seul draw sauté dans Sky Garden juste après,
+contre ~450 sans liste).
+
+0.3.4 : configuration facile de RecompLauncher de retour (choix du dossier du dump, conversion
 automatique) ; réglages choisis pour le PC au premier lancement (60 FPS si le processeur a 12 threads ou plus, sinon
 30 ; DLSS sur les cartes RTX ; génération d'images jamais activée par défaut) ; mise à l'échelle simplifiée (celle du
 jeu, DLSS, DLAA, AMD FSR 3.1) ; objectif de génération d'images à 120 FPS par défaut. 0.3.3 : résumé de session
@@ -72,9 +82,51 @@ Nouveautés de la **0.3.0** : premier runtime 100 % AkiBot, DLSS / FSR / génér
 | Vitesse temps réel | ✅ |
 | Ultrawide 21:9 / 32:9 | ✅ |
 | Correctifs du command buffer | ✅ |
-| Éclairage rapide (`AstroBot-NonRT`) | ❌ code différent dans cette version, patch ignoré |
-| Soft-assert du command buffer | ❌ idem |
-| Patch physique des tissus | ❌ idem |
+| Éclairage rapide (`AstroBot-NonRT`) | ✅ depuis 0.3.5 : patch communautaire 01.007 (voir ci-dessous) |
+| Soft-assert du command buffer | ✅ depuis 0.3.5 (fonction retrouvée par sa forme) |
+| Correctifs de plantage Havok | ✅ depuis 0.3.5 (dans le patch communautaire) |
+| Patch physique des tissus | ❌ code différent dans cette version, patch ignoré |
+
+### Patch communautaire 01.007 (0.3.5)
+
+Avec **Éclairage → rapide** (le réglage par défaut), AkiBot fabrique `AstroBot-NonRT-SoftAssert.exe` à partir de ta
+copie du jeu : le patch `PPSA21564_01_007_000_Astro_Bot_1.json` de KytyPS5-Modules, porté sur l'exécutable converti
+(son code va dans une section `.akipat` ajoutée), avec ses réglages par défaut + les correctifs Havok :
+
+- rendu d'éclairage différé non tuilé (non-RT) ;
+- minuteries du jeu découplées des FPS, pas de temps limité à 1/30 s, limiteur CPU du jeu retiré ;
+- rendu fixé en 1920×1080 (comme le jeu d'origine en jeu) et textures 4K chargées en 2K (moins de mémoire vidéo) ;
+- correctifs de plantage Havok (forme de contact manquante, débordement de la pile des requêtes d'arbre).
+
+Rien n'est écrit si un seul octet d'origine diffère (autre version, ou conversion pour processeur Intel : dans ce cas
+l'éclairage d'origine est gardé). Le résultat est vérifié par son empreinte SHA-256. Le détail est dans
+`Logs\setup.log`.
+
+| Sky Garden 1080p, même séance (9800X3D + RTX 5070) | FPS | 1 % bas |
+|---|---|---|
+| Éclairage d'origine | 58,8 / 58,9 | 44,3 / 45,4 |
+| Patch communautaire | 60,3 / 61,0 | 47,3 / 48,4 |
+| Patch + correctifs Havok | 61,5 / 62,1 | 47,9 / 49,3 |
+
+Le limiteur 120 FPS du patch n'est pas activé : le jeu reste plafonné vers 60 FPS par le processeur (Kyty), il
+n'apporte rien pour l'instant.
+
+### Préparation des shaders (0.3.5, runtime 0.3.2)
+
+Le runtime contient `Build\RunHybrid\PipelineLists\PPSA21567.kyplst`, une liste faite sur nos parties en 01.007 :
+789 shaders, 1 583 pipelines, **seulement des positions et des empreintes, aucun code du jeu** (vérifié par
+`kyty_pipeline_list verify` à chaque fabrication du runtime). Kyty retrouve chaque shader dans ta copie du jeu par son
+empreinte.
+
+- Au premier Jouer (aussi depuis RecompLauncher), AkiBot lance Kyty en mode préparation (`KYTY_PIPELINE_LIST_PREPARE`) :
+  il construit tout, enregistre ses caches et s'arrête ; le jeu démarre ensuite tout seul. Quelques secondes à une
+  minute selon le cache du pilote graphique.
+- « Jouer sans attendre » saute l'étape (elle reviendra au prochain lancement) ; fermer la fenêtre ne lance rien.
+- Elle revient seulement si le runtime, la liste ou le pilote graphique changent (repère
+  `Build\RunHybrid\_PipelineCache\akibot-prepared.txt`). Journal : `Logs\shader-prep.log`.
+  `AKIBOT_SHADER_PREP=0` la désactive.
+- Sur une autre version du jeu, Kyty ignore la liste si moins de la moitié des shaders correspondent : rien n'est
+  préparé, le jeu se lance comme avant.
 
 ### Mesures de référence (Sky Garden)
 
@@ -163,7 +215,8 @@ powershell -ExecutionPolicy Bypass -File ..\AkiBot\Tools\hybrid\build-kyty-pgo.p
 - [ ] Comprendre pourquoi la génération NVIDIA ×4 fait tomber le jeu de ~59 à ~39 FPS.
 - [ ] Profiler le « draw commit » du command processor (~22 ms par image sur un seul thread CPU, ~4 900 draws
       par image) et chercher des gains.
-- [ ] Porter l'éclairage rapide et le soft-assert sur la v01.007.000.
+- [x] Porter l'éclairage rapide et le soft-assert sur la v01.007.000 (0.3.5, patch communautaire).
+- [ ] Porter le patch communautaire pour les processeurs Intel (exécutable converti différemment).
 - [ ] Préréglages pour les CPU X3D et les RTX 50.
 
 ## Contribuer
@@ -190,6 +243,8 @@ AkiBot n'existe que grâce à ces projets :
 - **KytyPS5 / Kyty** : la pile GPU traduite vers Vulkan (`kyty_gpu.dll`).
 - **NVIDIA Streamline** : DLSS, Frame Generation et Reflex.
 - **AMD FidelityFX SDK** (licence MIT) : FSR 3.1 et génération d'images FSR 3.
+- **[KytyPS5-Modules](https://github.com/KytyPS5/KytyPS5-Modules)** et ses contributeurs : le patch communautaire
+  Astro Bot 01.007 (rendu non-RT, delta time, correctifs Havok) appliqué depuis la 0.3.5.
 
 Astro Bot est une marque de Sony Interactive Entertainment. Ce projet n'est ni affilié à Sony ni approuvé par
 Sony.

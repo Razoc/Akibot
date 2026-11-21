@@ -1,0 +1,76 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Razoc <razoc@users.noreply.github.com>
+Date: Sun, 22 Nov 2026 00:46:49 +0100
+Subject: [PATCH 49/49] =?UTF-8?q?fix(akibot):=20pr=C3=A9paration=20des=20s?=
+ =?UTF-8?q?haders=20(KYTY=5FPIPELINE=5FLIST=5FPREPARE)=20en=20mode=20hybri?=
+ =?UTF-8?q?de=20sur=20int21?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+En mode hybride, Kyty ne charge pas le param.sfo : la liste de shaders et la préparation
+étaient ignorées sans message. Titre de secours AKIBOT_CACHE_TITLE_ID (comme les fichiers
+du cache), KYTY_PIPELINE_LIST_CROSS=1 pour accepter une liste d'une autre référence ou
+version (chaque shader reste vérifié par son empreinte), et app0/eboot.bin comme exécutable
+quand aucun chargeur Kyty ne l'a fixé.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../renderer/pipeline/pipelineCache.cpp       | 23 +++++++++++++++----
+ 1 file changed, 19 insertions(+), 4 deletions(-)
+
+diff --git a/src/graphics/host_gpu/renderer/pipeline/pipelineCache.cpp b/src/graphics/host_gpu/renderer/pipeline/pipelineCache.cpp
+index 842ec953..a037d0ab 100644
+--- a/src/graphics/host_gpu/renderer/pipeline/pipelineCache.cpp
++++ b/src/graphics/host_gpu/renderer/pipeline/pipelineCache.cpp
+@@ -5571,7 +5571,9 @@ void PipelineCache::InitializePipelineList() {
+ 	const bool  prepare = EnvU64("KYTY_PIPELINE_LIST_PREPARE", 0) != 0;
+ 	const bool  off     = setting == nullptr || *setting == '\0' || std::strcmp(setting, "0") == 0;
+ 	if (off && !prepare) return;
+-	const auto title_id = PipelineCacheTitleId();
++	// AkiBot : en mode hybride, le param.sfo n'est pas chargé par Kyty ; même secours que les fichiers
++	// du cache (AKIBOT_CACHE_TITLE_ID), sinon la liste était ignorée sans message.
++	const auto title_id = PipelineCacheFileTitleId();
+ 	if (title_id.empty()) return;
+ 	const auto begin = CompileClockNs();
+ 	const auto path  = off || std::strcmp(setting, "1") == 0
+@@ -5601,12 +5603,24 @@ void PipelineCache::InitializePipelineList() {
+ 	bytes = {};
+ 	std::string version;
+ 	(void)Loader::SystemContentParamSfoGetString("APP_VER", &version);
+-	if (file.info.title_id != title_id || file.info.app_version != version) {
++	// AkiBot (repris d'int22) : KYTY_PIPELINE_LIST_CROSS=1 accepte une liste d'une autre version ou d'une
++	// autre référence (en hybride la version est vide et le dump 01.007 se dit PPSA21564) ; chaque shader
++	// doit quand même correspondre à l'exécutable du joueur par ses hash.
++	const bool other_game = file.info.title_id != title_id || file.info.app_version != version;
++	if (other_game && EnvU64("KYTY_PIPELINE_LIST_CROSS", 0) != 0) {
++		PipelineCacheLog("Pipeline list: {} is for {} version {}, the game is {} version {}: used, shaders matched by hash",
++		                 Common::PathToString(path), file.info.title_id, file.info.app_version, title_id, version);
++	} else if (other_game) {
+ 		PipelineCacheLog("Pipeline list: {} is for {} version {}, the game is {} version {}: ignored",
+ 		                 Common::PathToString(path), file.info.title_id, file.info.app_version, title_id, version);
+ 		return;
+ 	}
+-	const auto executable = PipelineListExecutable();
++	auto executable = PipelineListExecutable();
++	// AkiBot : en mode hybride, aucun chargeur Kyty ne fixe l'exécutable ; le jeu tourne depuis
++	// Build/RunHybrid, où se trouve app0/eboot.bin (le code des shaders y est lu, comparé par hash).
++	if (executable.empty()) {
++		executable = std::filesystem::path("app0") / "eboot.bin";
++	}
+ 	std::ifstream code_file(executable, std::ios::binary);
+ 	if (executable.empty() || !code_file) {
+ 		PipelineCacheLog("Pipeline list: the game executable ({}) cannot be read: ignored",
+@@ -5831,7 +5845,8 @@ PipelineCache::PipelineCache(GraphicContext& graphics)
+ 		                 threads, m_skip_wait_ns / 1000);
+ 	}
+ 	if (EnvU64("KYTY_PIPELINE_STATS", 0) != 0) m_stats_reporter = std::make_unique<StatsReporter>(*this);
+-	if (EnvU64("KYTY_PIPELINE_LIST_PREPARE", 0) != 0 && !PipelineCacheTitleId().empty()) RunListPrepare();
++	// AkiBot : titre de secours AKIBOT_CACHE_TITLE_ID en mode hybride (param.sfo non chargé par Kyty).
++	if (EnvU64("KYTY_PIPELINE_LIST_PREPARE", 0) != 0 && !PipelineCacheFileTitleId().empty()) RunListPrepare();
+ }
+ 
+ PipelineCache::~PipelineCache() {
+-- 
+2.56.0.windows.4
+

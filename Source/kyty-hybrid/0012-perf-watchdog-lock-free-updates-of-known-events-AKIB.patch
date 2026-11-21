@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Sat, 7 Nov 2026 20:36:54 +0000
-Subject: [PATCH 12/42] perf(watchdog): lock-free updates of known events
+Subject: [PATCH 12/49] perf(watchdog): lock-free updates of known events
  (AKIBOT_WATCHDOG_FAST_EVENTS)
 
 KYTY_HANG_WATCHDOG=auto enables the hang watchdog on RTX 50 GPUs, where

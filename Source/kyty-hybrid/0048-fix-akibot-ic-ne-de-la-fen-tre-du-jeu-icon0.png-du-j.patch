@@ -1,0 +1,47 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Razoc <razoc@users.noreply.github.com>
+Date: Fri, 20 Nov 2026 00:01:02 +0100
+Subject: [PATCH 48/49] =?UTF-8?q?fix(akibot):=20ic=C3=B4ne=20de=20la=20fen?=
+ =?UTF-8?q?=C3=AAtre=20du=20jeu=20(icon0.png=20du=20jeu=20ou=20AKIBOT=5FWI?=
+ =?UTF-8?q?NDOW=5FICON)=20:=20plus=20de=20barre=20des=20t=C3=A2ches=20sans?=
+ =?UTF-8?q?=20logo?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/graphics/presentation/window/window.cpp | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/src/graphics/presentation/window/window.cpp b/src/graphics/presentation/window/window.cpp
+index 6d7fe711..b5aba5ce 100644
+--- a/src/graphics/presentation/window/window.cpp
++++ b/src/graphics/presentation/window/window.cpp
+@@ -1043,6 +1043,23 @@ void WindowContext::UpdateIcon() {
+ 		if (Loader::SystemContentGetIconPath(&icon_path)) {
+ 			WindowLoadPngIcon(icon_path, &icon);
+ 		}
++		// AkiBot: the hybrid build does not load the game's system content, so the window (and the
++		// taskbar) had no icon. AKIBOT_WINDOW_ICON, else the game's own icon0.png next to it (the game
++		// runs from Build\RunHybrid).
++		if (icon.surface == nullptr) {
++			std::error_code ec;
++			const char*     custom = std::getenv("AKIBOT_WINDOW_ICON");
++			for (const std::filesystem::path candidate: {
++			         custom != nullptr && custom[0] != '\0' ? std::filesystem::u8path(custom) : std::filesystem::path {},
++			         std::filesystem::path("app0") / "sce_sys" / "icon0.png"}) {
++				if (!candidate.empty() && std::filesystem::exists(candidate, ec)) {
++					WindowLoadPngIcon(candidate, &icon);
++					if (icon.surface != nullptr) {
++						break;
++					}
++				}
++			}
++		}
+ 		icon_loaded = true;
+ 	}
+ 
+-- 
+2.56.0.windows.4
+

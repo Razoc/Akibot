@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Local Build <local@invalid>
 Date: Sat, 14 Nov 2026 21:32:07 +0000
-Subject: [PATCH 36/42] feat(hybrid): Bluetooth DualSense speaker/haptics
+Subject: [PATCH 36/49] feat(hybrid): Bluetooth DualSense speaker/haptics
  bridge, rumble scale, SaveDataTransferringMount
 
 ---

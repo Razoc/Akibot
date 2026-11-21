@@ -13,7 +13,7 @@
     "args": ["--prepare", "{game}"],
     "label": "AkiBot runtime (192 MB) and the game converted from your dump",
     "timeout": 1800,
-    "version": "0.3.1",
+    "version": "0.3.2",
     "done": ["{install}/Build/RunHybrid/AstroBot.exe", "{install}/Build/RunHybrid/kyty_gpu.dll"]
   },
   "start": {

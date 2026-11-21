@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Thu, 12 Nov 2026 22:13:44 +0000
-Subject: [PATCH 30/42] feat(hybrid): opt-in DLSS Frame Generation through
+Subject: [PATCH 30/49] feat(hybrid): opt-in DLSS Frame Generation through
  Streamline
 
 AKIBOT_DLSSG=1 (with a KYTY_STREAMLINE_DIR build) initialises

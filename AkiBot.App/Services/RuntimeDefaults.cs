@@ -35,6 +35,16 @@ namespace AkiBot.App.Services
             if (!Has(env, "AKIBOT_CACHE_TITLE_ID") && Get(env, "AKIBOT_SHADER_CACHE") != "0")
                 env["AKIBOT_CACHE_TITLE_ID"] = "PPSA21567";
 
+            // Shader list for the first start (2026-11-21): Build\RunHybrid\PipelineLists\PPSA21567.kyplst, made from
+            // recorded 01.007 runs (offsets and hashes only, no game code). The dump calls itself PPSA21564 and the
+            // hybrid renderer has no version, so the list is taken "cross" (each shader still matched by hash).
+            // AKIBOT_SHADER_LIST=0 turns it off.
+            if (Get(env, "AKIBOT_SHADER_LIST") != "0" && File.Exists(ShaderListPath(runHybrid)))
+            {
+                Default(env, "KYTY_PIPELINE_LIST", "1");
+                Default(env, "KYTY_PIPELINE_LIST_CROSS", "1");
+            }
+
             // Kyty engine preset (Build\RunHybrid\u59-preset.json).
             foreach (var kvp in LoadPreset(Path.Combine(runHybrid, PresetFile)))
                 Default(env, kvp.Key, kvp.Value);
@@ -72,6 +82,9 @@ namespace AkiBot.App.Services
             Default(env, "KYTY_GPU_WIDTH", "1920");
             Default(env, "KYTY_GPU_HEIGHT", "1080");
         }
+
+        public static string ShaderListPath(string runHybrid) =>
+            Path.Combine(runHybrid, "PipelineLists", "PPSA21567.kyplst");
 
         public static void SetPriority(Process process, string? priority)
         {
