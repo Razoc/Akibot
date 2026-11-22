@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Thu, 12 Nov 2026 23:45:13 +0000
-Subject: [PATCH 33/49] feat(hybrid): adaptive frame generation multiplier for
+Subject: [PATCH 33/51] feat(hybrid): adaptive frame generation multiplier for
  an on-screen target
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

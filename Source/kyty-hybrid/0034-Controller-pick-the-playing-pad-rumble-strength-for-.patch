@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Fri, 13 Nov 2026 00:43:31 +0000
-Subject: [PATCH 34/49] Controller: pick the playing pad, rumble strength for
+Subject: [PATCH 34/51] Controller: pick the playing pad, rumble strength for
  non-DualSense pads
 
 AKIBOT_PAD_PREFER=auto|ps|xbox|switch|generic (default unset, Kyty's

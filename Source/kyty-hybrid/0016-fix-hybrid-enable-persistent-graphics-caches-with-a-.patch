@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Sun, 8 Nov 2026 01:46:15 +0000
-Subject: [PATCH 16/49] fix(hybrid): enable persistent graphics caches with a
+Subject: [PATCH 16/51] fix(hybrid): enable persistent graphics caches with a
  title ID
 
 ---

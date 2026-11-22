@@ -20,7 +20,13 @@ namespace AkiBot.App.Services
             // Keep commit-epoch fastpath off and buffer-range fixes on so cloth, blankets and bubbles
             // do not corrupt into stray polygons (issues #30, #35).
             env.Remove("KYTY_BARRIER_BATCH");
-            env.Remove("KYTY_DISPATCH_OVERLAP");
+            // Dispatch overlap off (from the upstream port, AstroHybrid 1.2.13, its #154 #65): it lets two
+            // consecutive compute dispatches run unordered, safe on the PS5 GPU but not on a PC GPU, where a
+            // dispatch waiting on the previous one can take the whole card until Windows resets it (error 321)
+            // and causes 300 ms freezes. Kyty turns it on by default. Sky Garden 2026-11-22 (RTX 5070): same
+            // FPS (58.1-59.0); 1% low 29.7 / 30.2 off against 55.7 / 31.4 on, within the run-to-run noise.
+            // AKIBOT_DISPATCH_OVERLAP=1 brings it back.
+            env["KYTY_DISPATCH_OVERLAP"] = Get(env, "AKIBOT_DISPATCH_OVERLAP") == "1" ? "1" : "0";
             env.Remove("KYTY_WAVE64_WARPS");
             env["AKIBOT_COMMIT_EPOCH_FASTPATH"] = "0";
             env["KYTY_BUFFER_RANGE_FIXES"] = "1";

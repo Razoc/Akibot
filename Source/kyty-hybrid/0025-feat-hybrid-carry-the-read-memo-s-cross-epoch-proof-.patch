@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Thu, 12 Nov 2026 19:56:22 +0000
-Subject: [PATCH 25/49] feat(hybrid): carry the read memo's cross-epoch proof
+Subject: [PATCH 25/51] feat(hybrid): carry the read memo's cross-epoch proof
  by its signature
 
 With AKIBOT_COMMIT_EPOCH_FASTPATH, a cached read memo whose locked

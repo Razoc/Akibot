@@ -13,7 +13,7 @@
     "args": ["--prepare", "{game}"],
     "label": "AkiBot runtime (192 MB) and the game converted from your dump",
     "timeout": 1800,
-    "version": "0.3.2",
+    "version": "0.3.3",
     "done": ["{install}/Build/RunHybrid/AstroBot.exe", "{install}/Build/RunHybrid/kyty_gpu.dll"]
   },
   "start": {
@@ -22,10 +22,10 @@
   },
   "exit_codes": {
     "0": "ok",
-    "-1073741819": "AkiBot stopped because of a crash. Please send a report from the launcher: it includes Logs/akibot-summary.txt, which tells us your PC, settings and what went wrong.",
-    "3221225477": "AkiBot stopped because of a crash. Please send a report from the launcher: it includes Logs/akibot-summary.txt, which tells us your PC, settings and what went wrong.",
-    "-1073740791": "AkiBot stopped because of a crash. Please send a report from the launcher: it includes Logs/akibot-summary.txt, which tells us your PC, settings and what went wrong.",
-    "3221226505": "AkiBot stopped because of a crash. Please send a report from the launcher: it includes Logs/akibot-summary.txt, which tells us your PC, settings and what went wrong.",
+    "-1073741819": "AkiBot stopped because of a crash. Please send a report from the launcher: it includes Logs/akibot-summary.log, which tells us your PC, settings and what went wrong.",
+    "3221225477": "AkiBot stopped because of a crash. Please send a report from the launcher: it includes Logs/akibot-summary.log, which tells us your PC, settings and what went wrong.",
+    "-1073740791": "AkiBot stopped because of a crash. Please send a report from the launcher: it includes Logs/akibot-summary.log, which tells us your PC, settings and what went wrong.",
+    "3221226505": "AkiBot stopped because of a crash. Please send a report from the launcher: it includes Logs/akibot-summary.log, which tells us your PC, settings and what went wrong.",
     "-1073741515": "A file the game needs is missing (a DLL). Reinstall AkiBot from the launcher.",
     "3221225781": "A file the game needs is missing (a DLL). Reinstall AkiBot from the launcher."
   },

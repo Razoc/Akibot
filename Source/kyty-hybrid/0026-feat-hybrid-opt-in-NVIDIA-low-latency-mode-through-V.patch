@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Thu, 12 Nov 2026 20:20:55 +0000
-Subject: [PATCH 26/49] feat(hybrid): opt-in NVIDIA low-latency mode through
+Subject: [PATCH 26/51] feat(hybrid): opt-in NVIDIA low-latency mode through
  VK_NV_low_latency2
 
 AKIBOT_LOW_LATENCY=1|measure (default off). Enables the extension

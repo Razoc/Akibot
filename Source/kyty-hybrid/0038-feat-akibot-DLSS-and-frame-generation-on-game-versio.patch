@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Razoc <razoc@users.noreply.github.com>
 Date: Tue, 17 Nov 2026 22:48:16 +0100
-Subject: [PATCH 38/49] feat(akibot): DLSS and frame generation on game version
+Subject: [PATCH 38/51] feat(akibot): DLSS and frame generation on game version
  01.007.000
 
 Astro Bot 01.007.000 has another temporal upscale pass (pixel shader

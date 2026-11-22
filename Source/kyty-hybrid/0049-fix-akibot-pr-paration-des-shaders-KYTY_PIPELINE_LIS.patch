@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Razoc <razoc@users.noreply.github.com>
 Date: Sun, 22 Nov 2026 00:46:49 +0100
-Subject: [PATCH 49/49] =?UTF-8?q?fix(akibot):=20pr=C3=A9paration=20des=20s?=
+Subject: [PATCH 49/51] =?UTF-8?q?fix(akibot):=20pr=C3=A9paration=20des=20s?=
  =?UTF-8?q?haders=20(KYTY=5FPIPELINE=5FLIST=5FPREPARE)=20en=20mode=20hybri?=
  =?UTF-8?q?de=20sur=20int21?=
 MIME-Version: 1.0

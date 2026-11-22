@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Fri, 6 Nov 2026 22:11:28 +0000
-Subject: [PATCH 08/49] test(hybrid): refresh GPU loader expectations
+Subject: [PATCH 08/51] test(hybrid): refresh GPU loader expectations
 
 ---
  tests/hybrid/kytyGpuLoadTest.c | 5 +++--

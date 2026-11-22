@@ -153,16 +153,45 @@ namespace AkiBot.App.Services
             }
             var section = Hex(Section);
             Array.Copy(section, 0, result, BaseLength, section.Length);
+            // The tested program has the 8 MiB worker command buffer table. Since 0.3.6 the base executable
+            // has 16 MiB (GameSetup): the result is checked with the table set back to 8 MiB for the hash, so
+            // it is the tested program with only those five table words changed.
+            var table16 = Hex(GameSetup.CommandBufferTable16);
+            int tableAt = IndexOfUnique(result, table16);
+            if (tableAt >= 0)
+            {
+                var table8 = Hex(GameSetup.CommandBufferTable8);
+                Array.Copy(table8, 0, result, tableAt, table8.Length);
+            }
             string sha;
             using (var hasher = SHA256.Create())
                 sha = BitConverter.ToString(hasher.ComputeHash(result)).Replace("-", "");
+            if (tableAt >= 0)
+                Array.Copy(table16, 0, result, tableAt, table16.Length);
             if (sha != PatchedSha256)
             {
                 log($"community 01.007 patch: result {sha} is not the tested program, skipped");
                 return null;
             }
-            log($"community 01.007 patch applied ({Changes.Length} changes, .akipat section of {SectionLength} bytes)");
+            log($"community 01.007 patch applied ({Changes.Length} changes, .akipat section of {SectionLength} bytes" +
+                (tableAt >= 0 ? ", 16 MiB command buffers kept)" : ")"));
             return result;
+        }
+
+        // Offset of the only occurrence of `pattern`, or -1 (none, or more than one).
+        private static int IndexOfUnique(byte[] data, byte[] pattern)
+        {
+            int found = -1;
+            for (int i = 0; i + pattern.Length <= data.Length; i++)
+            {
+                if (data[i] != pattern[0]) continue;
+                int j = 1;
+                while (j < pattern.Length && data[i + j] == pattern[j]) j++;
+                if (j < pattern.Length) continue;
+                if (found >= 0) return -1;
+                found = i;
+            }
+            return found;
         }
 
         private static byte[] Hex(string hex) => Enumerable.Range(0, hex.Length / 2).Select(i => Convert.ToByte(hex.Substring(i * 2, 2), 16)).ToArray();

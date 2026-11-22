@@ -13,7 +13,22 @@ travaillant sur la couche de traduction (CPU et GPU), jamais sur le jeu lui-mêm
 
 ## État actuel
 
-Version **0.3.5** : la **v01.007.000** a enfin son **éclairage rapide**. Le patch communautaire de
+Version **0.3.6** : moins de plantages liés à la carte graphique et à la mémoire vidéo, et des rapports enfin utiles.
+- Les **avis et rapports envoyés depuis RecompLauncher contiennent maintenant le résumé de session** (PC, réglages,
+  FPS et 1 % bas par niveau, pires saccades, erreurs, fermeture) : RecompLauncher ne joint qu'un seul `.log`, et le
+  résumé était en `.txt`. Il s'appelle désormais `Logs\akibot-summary.log`, écrit en dernier à la fermeture du jeu, et
+  il est aussi recopié à la fin de `Logs\hybrid-run.err.log`.
+- **Dispatch overlap coupé** (repris du portage AstroHybrid 1.2.13) : contre l'erreur 321 (carte bloquée jusqu'à la
+  réinitialisation par Windows) et les gels de ~300 ms. Mêmes FPS dans nos essais. `AKIBOT_DISPATCH_OVERLAP=1` le remet.
+- **Buffers de commandes des workers à 16 Mio** (repris d'AstroHybrid) : ils pouvaient manquer dans les scènes
+  chargées (`booster_construction`) puis faire planter le jeu. Les installations existantes sont mises à niveau toutes
+  seules au prochain Jouer (~40 Mo de mémoire en plus).
+- Nouveau **runtime 0.3.3** : quand la mémoire vidéo est pleine, un gros buffer qui n'y tient pas va en mémoire système
+  au lieu d'arrêter le jeu, et les textures inutilisées sont libérées d'abord (2 correctifs Kyty repris d'AstroHybrid).
+- Connu : un gel d'environ 0,6 s à l'entrée de Sky Garden (déjà présent avant). Sur les PC de 6 cœurs ou moins, le
+  processeur reste la limite : mesuré, pas encore de solution rapide.
+
+0.3.5 : la **v01.007.000** a enfin son **éclairage rapide**. Le patch communautaire de
 [KytyPS5-Modules](https://github.com/KytyPS5/KytyPS5-Modules) (rendu non-RT, minuteries du jeu découplées des FPS,
 limiteur CPU du jeu retiré, correctifs de plantage Havok) est appliqué par AkiBot à ta copie du jeu, avec le
 **soft-assert du command buffer** (le plantage « too many objects/batches in this scene » devient un simple message).
@@ -27,7 +42,7 @@ contre ~450 sans liste).
 automatique) ; réglages choisis pour le PC au premier lancement (60 FPS si le processeur a 12 threads ou plus, sinon
 30 ; DLSS sur les cartes RTX ; génération d'images jamais activée par défaut) ; mise à l'échelle simplifiée (celle du
 jeu, DLSS, DLAA, AMD FSR 3.1) ; objectif de génération d'images à 120 FPS par défaut. 0.3.3 : résumé de session
-`Logs\akibot-summary.txt`. AkiBot s'installe et se lance depuis [RecompLauncher](https://recomplauncher.com) (voir
+`Logs\akibot-summary.log`. AkiBot s'installe et se lance depuis [RecompLauncher](https://recomplauncher.com) (voir
 [Avec RecompLauncher](#avec-recomplauncher)).
 
 Nouveautés de la **0.3.0** : premier runtime 100 % AkiBot, DLSS / FSR / génération d'images et menu en jeu.
@@ -201,7 +216,7 @@ powershell -ExecutionPolicy Bypass -File ..\AkiBot\Tools\hybrid\build-kyty-pgo.p
   avec `autocrlf true`, applique les patchs tirés de Git (`git show HEAD:Source/kyty-hybrid/<patch>`).
 - Sans `KYTY_STREAMLINE_DIR` (SDK Streamline 2.14.16), la DLL est construite sans DLSS ni génération d'images
   NVIDIA ; sans `KYTY_FFX_DIR` (AMD FidelityFX SDK 1.1.4), sans FSR.
-- Paquet runtime complet : `powershell -ExecutionPolicy Bypass -File Tools\release\make_runtime.ps1 -Version 0.3.0`.
+- Paquet runtime complet : `powershell -ExecutionPolicy Bypass -File Tools\release\make_runtime.ps1 -Version 0.3.3`.
 - Pour tester : garde une copie de `Build\RunHybrid\kyty_gpu.dll`, remplace-la, mesure avec `bench_level.ps1`.
 
 ## Feuille de route
@@ -218,6 +233,10 @@ powershell -ExecutionPolicy Bypass -File ..\AkiBot\Tools\hybrid\build-kyty-pgo.p
 - [x] Porter l'éclairage rapide et le soft-assert sur la v01.007.000 (0.3.5, patch communautaire).
 - [ ] Porter le patch communautaire pour les processeurs Intel (exécutable converti différemment).
 - [ ] Préréglages pour les CPU X3D et les RTX 50.
+- [x] Résumé de session joint aux avis et rapports RecompLauncher (0.3.6).
+- [x] Correctifs de stabilité repris d'AstroHybrid : dispatch overlap, buffers de commandes 16 Mio, mémoire vidéo
+      pleine (0.3.6, runtime 0.3.3).
+- [ ] Gel d'environ 0,6 s à l'entrée de Sky Garden.
 
 ## Contribuer
 
@@ -225,7 +244,7 @@ Les idées, mesures et pull requests sont les bienvenues :
 
 - Ouvre une issue avec ta config (CPU, GPU, RAM, pilote), la version de ton dump (`sce_sys/param.json` →
   `titleId` et `contentVersion`) et ce que tu as mesuré.
-- Joins les logs (`Logs\akibot-summary.txt` d'abord, puis `Logs\setup.log`, `Logs\akibot-launch.log`,
+- Joins les logs (`Logs\akibot-summary.log` d'abord, puis `Logs\setup.log`, `Logs\akibot-launch.log`,
   `Logs\hybrid-run.err.log`) **après avoir retiré tes chemins perso**. Depuis RecompLauncher, le rapport du jeu les contient déjà.
 - Ne publie **jamais** de fichier du jeu, ni `AstroBot.exe`, ni le dossier `Build\` : c'est du code du jeu
   converti.
@@ -237,7 +256,7 @@ Les améliorations utiles à tous seront aussi proposées au projet d'origine.
 AkiBot n'existe que grâce à ces projets :
 
 - **[pcportastrobot](https://github.com/imnotsharingmyname/pcportastrobot)** (imnotsharingmyname) : le
-  portage dont ce dépôt est un fork. Son README d'origine (en anglais) est dans [Docs/README-amont.md](Docs/README-amont.md).
+  portage dont ce dépôt est un fork ; la 0.3.6 reprend plusieurs de ses correctifs de stabilité. Son README d'origine (en anglais) est dans [Docs/README-amont.md](Docs/README-amont.md).
 - **AnyPS5** (boykopovar) : convertit le code x86-64 du jeu en exécutable Windows et réimplémente les
   bibliothèques système PS5.
 - **KytyPS5 / Kyty** : la pile GPU traduite vers Vulkan (`kyty_gpu.dll`).

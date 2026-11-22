@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Thu, 12 Nov 2026 20:37:38 +0000
-Subject: [PATCH 27/49] feat(hybrid): pass trace and targeted shader dump
+Subject: [PATCH 27/51] feat(hybrid): pass trace and targeted shader dump
  diagnostics
 
 AKIBOT_PASS_TRACE=<s> traces three frames of draws and dispatches

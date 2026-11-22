@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: faycal <faycalelhandi9@gmail.com>
 Date: Fri, 13 Nov 2026 00:54:29 +0000
-Subject: [PATCH 35/49] Relay: angular velocity from orientation for pads
+Subject: [PATCH 35/51] Relay: angular velocity from orientation for pads
  without a gyroscope
 
 Kyty's emulated tilt reports orientation with angular velocity at rest;

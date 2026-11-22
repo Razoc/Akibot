@@ -20,7 +20,9 @@ namespace AkiBot.App.Services
     // is there even when the launcher is stopped with the game.
     public sealed class SessionReport : IDisposable
     {
-        public const string FileName = "akibot-summary.txt";
+        // A .log: a RecompLauncher review attaches one .log of the Logs folder, never a .txt.
+        public const string FileName = "akibot-summary.log";
+        private const string OldFileName = "akibot-summary.txt";
         public const string FrameTimesFile = "akibot-frame-times.csv";
 
         private const int MaxProblems = 200;
@@ -77,6 +79,7 @@ namespace AkiBot.App.Services
         {
             _rootDirectory = rootDirectory;
             _summaryPath = Path.Combine(logsDirectory, FileName);
+            try { File.Delete(Path.Combine(logsDirectory, OldFileName)); } catch { }
             _commandLine = commandLine;
             _settings = new Dictionary<string, string>(StringComparer.Ordinal);
             foreach (string key in env.Keys)
@@ -181,11 +184,27 @@ namespace AkiBot.App.Services
             }
         }
 
-        public void Finish(int exitCode)
+        // alsoAppendTo: a log that gets the final summary at its end first (see AppendTo); the summary file
+        // is written last, so it is the newest .log of Logs.
+        public void Finish(int exitCode, string? alsoAppendTo = null)
         {
             _timer.Dispose();
             lock (_lock) _exitCode = exitCode;
+            if (alsoAppendTo != null) AppendTo(alsoAppendTo);
             Write();
+        }
+
+        // Copies the final summary to the end of another log (hybrid-run.err.log), so whichever .log a
+        // RecompLauncher review attaches carries it; at the end, as the launcher keeps the end of long logs.
+        private void AppendTo(string logPath)
+        {
+            try
+            {
+                string text;
+                lock (_lock) text = Build();
+                File.AppendAllText(logPath, Environment.NewLine + text, new UTF8Encoding(false));
+            }
+            catch { }
         }
 
         public void Dispose() => _timer.Dispose();

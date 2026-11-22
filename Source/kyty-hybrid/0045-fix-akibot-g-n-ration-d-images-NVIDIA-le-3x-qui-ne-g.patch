@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Razoc <razoc@users.noreply.github.com>
 Date: Thu, 19 Nov 2026 22:59:49 +0100
-Subject: [PATCH 45/49] =?UTF-8?q?fix(akibot):=20g=C3=A9n=C3=A9ration=20d'i?=
+Subject: [PATCH 45/51] =?UTF-8?q?fix(akibot):=20g=C3=A9n=C3=A9ration=20d'i?=
  =?UTF-8?q?mages=20NVIDIA,=20le=203x=20(qui=20ne=20g=C3=A9n=C3=A8re=20rien?=
  =?UTF-8?q?=20avec=20Streamline=202.14.16)=20devient=202x=20ou=204x=20;=20?=
  =?UTF-8?q?le=20mode=20Auto=20retente=20le=202x=20depuis=20le=204x=20plafo?=

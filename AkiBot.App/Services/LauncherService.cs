@@ -144,11 +144,13 @@ namespace AkiBot.App.Services
                 env[kvp.Key] = kvp.Value;
             }
             RuntimeDefaults.Apply(env, runHybrid);
-            // One line per frame for akibot-summary.txt (FPS, 1% low, stutters); a path set beforehand wins.
+            // One line per frame for akibot-summary.log (FPS, 1% low, stutters); a path set beforehand wins.
             if (string.IsNullOrEmpty(env["KYTY_FRAME_TIMES_LOG"]))
                 env["KYTY_FRAME_TIMES_LOG"] = SessionReport.FrameTimesPath(_rootDirectory);
 
             psi.FileName = Path.Combine(runHybrid, env["AKIBOT_EXE"]);
+            // 16 MiB worker command buffers in an executable set up with 8 (once per file; never blocks the start).
+            try { new GameSetup(_rootDirectory).UpgradeCommandBufferTable(env["AKIBOT_EXE"]); } catch { }
             var args = new List<string>();
             if (env["AKIBOT_SKIP_INTRO"] == "1") args.Add("-skipIntro");
             args.AddRange(gameArgs);
@@ -171,7 +173,8 @@ namespace AkiBot.App.Services
             }
             catch { }
             using var outLog = new StreamWriter(Path.Combine(logs, "hybrid-run.out.log"), false);
-            using var errLog = new StreamWriter(Path.Combine(logs, "hybrid-run.err.log"), false);
+            var errPath = Path.Combine(logs, "hybrid-run.err.log");
+            using var errLog = new StreamWriter(errPath, false);
             using var report = new SessionReport(_rootDirectory, logs, env, $"{psi.FileName} {psi.Arguments}", hardware);
             using var process = new Process { StartInfo = psi };
             process.OutputDataReceived += (sender, e) =>
@@ -199,7 +202,11 @@ namespace AkiBot.App.Services
 
             // WaitForExit() without a timeout also waits for the end of both outputs.
             await Task.Run(() => process.WaitForExit());
-            report.Finish(process.ExitCode);
+            lock (errLog) errLog.Dispose();
+            lock (outLog) outLog.Dispose();
+            // The summary goes to the end of err.log, then to akibot-summary.log: whichever .log a RecompLauncher
+            // review attaches, it carries the summary.
+            report.Finish(process.ExitCode, errPath);
             return process.ExitCode;
         }
 

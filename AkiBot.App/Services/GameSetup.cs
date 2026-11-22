@@ -522,8 +522,34 @@ namespace AkiBot.App.Services
             return true;
         }
 
+        internal const string CommandBufferTable8 = "0800000008000000080000000800000008000000100020003000400008000000";
+        internal const string CommandBufferTable16 = "1000000010000000100000001000000010000000100020003000400008000000";
+        private const string CommandBufferUpgradeMarker = "akibot-cmdbuf16.txt";
+
+        // Games set up before 0.3.6 have the 8 MiB table in every AstroBot*.exe. Raises it to 16 MiB in the
+        // executable about to start, once (from the upstream port, AstroHybrid 28d69f75: 8 MiB still ran out
+        // in booster_construction, its #159). The names already checked are kept in a marker file next to
+        // them, so the large file is read only the first time. A file without the 8 MiB table (a new setup,
+        // another game version) is left as it is. Returns true when it changed the file.
+        public bool UpgradeCommandBufferTable(string exeName, Action<string>? log = null)
+        {
+            log ??= _ => { };
+            var marker = Path.Combine(_runHybrid, CommandBufferUpgradeMarker);
+            var done = File.Exists(marker)
+                ? new HashSet<string>(File.ReadAllLines(marker), StringComparer.OrdinalIgnoreCase)
+                : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (done.Contains(exeName)) return false;
+            var path = Path.Combine(_runHybrid, exeName);
+            if (!File.Exists(path)) return false;
+            var bytes = File.ReadAllBytes(path);
+            bool changed = ApplyAll(bytes, new[] { ("cmdbuf_worker_mib_table_16", CommandBufferTable8, CommandBufferTable16) }, log);
+            if (changed) File.WriteAllBytes(path, bytes);
+            File.AppendAllLines(marker, new[] { exeName });
+            return changed;
+        }
+
         // Prevent worker command buffer exhaustion and NULL memcpy crashes in heavy scenes (#47, #50, #6).
-        // Raises the 5-worker command buffer MiB table (7,7,4,4,6 -> 8,8,8,8,8) and skips memcpy when dst is NULL.
+        // Raises the 5-worker command buffer MiB table (7,7,4,4,6 -> 16 each) and skips memcpy when dst is NULL.
         // Note: Do NOT patch 0x471644 (guard0); its eb 37 jump is shared by non-null allocations and skipping it drops command buffer copies.
         private static bool ApplyCommandBufferPatches(byte[] data, Action<string> log)
         {
@@ -531,7 +557,7 @@ namespace AkiBot.App.Services
             {
                 ("cmdbuf_worker_mib_table",
                     "0700000007000000040000000400000006000000100020003000400008000000",
-                    "0800000008000000080000000800000008000000100020003000400008000000"),
+                    CommandBufferTable16),
                 ("cmdbuf_null_memcpy_guard1",
                     "4531FFEB0F49C1E4024D29E74983E7FC4D897E18488B7318",
                     "4531FFEB2649C1E4024D29E74983E7FC4D897E18488B7318"),

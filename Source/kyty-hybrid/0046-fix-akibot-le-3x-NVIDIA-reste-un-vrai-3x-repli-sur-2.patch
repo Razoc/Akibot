@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Razoc <razoc@users.noreply.github.com>
 Date: Thu, 19 Nov 2026 23:14:58 +0100
-Subject: [PATCH 46/49] =?UTF-8?q?fix(akibot):=20le=203x=20NVIDIA=20reste?=
+Subject: [PATCH 46/51] =?UTF-8?q?fix(akibot):=20le=203x=20NVIDIA=20reste?=
  =?UTF-8?q?=20un=20vrai=203x=20;=20repli=20sur=202x/4x=20seulement=20s'il?=
  =?UTF-8?q?=20ne=20g=C3=A9n=C3=A8re=20rien=20(remplacement=20DLSS=20de=20l?=
  =?UTF-8?q?a=20NVIDIA=20App)?=
